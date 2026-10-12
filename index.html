@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해외주식 양도소득세 계산기 · 똑재TV</title>
+<meta name="description" content="미국 주식을 판 돈, 양도소득세가 얼마인지 종목별로 계산합니다. 원화 환산·환율 몫 분해·손익통산·기본공제 250만원·연말 손실 매도 시뮬레이션·국내시장 복귀계좌(RIA) 공제까지 2026년 기준으로 반영했습니다.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<style>
+  :root {
+    --bg: #F5EFE6;
+    --bg-alt: #EFE7DA;
+    --ink: #1A1A1A;
+    --ink-soft: #4A4A4A;
+    --ink-mute: #8B8276;
+    --accent: #D9542B;
+    --accent-soft: #F4D5C4;
+    --border: #E5DCC8;
+    --white: #FBF7F0;
+    --brown: #8B6F47;
+    --beige-gold: #C4A57B;
+    --dark-warm: #3A2F26;
+    --dark-warm-soft: #5A4A3D;
+    --green: #4A5A4A;
+    --loss: #3D6A9E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 32px 24px;
+    font-weight: 600;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  /* 헤더 */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; background: var(--dark-warm); color: var(--white);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px;
+  }
+  .logo-name { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 10px; color: var(--ink-mute); font-weight: 700; letter-spacing: 1px; }
+
+  /* 히어로 */
+  .hero { margin-bottom: 32px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--white); border: 1.5px solid var(--accent); color: var(--accent);
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 20px;
+  }
+  .tag .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+  .hero-title { font-size: 64px; font-weight: 900; letter-spacing: -2.5px; line-height: 1.05; margin-bottom: 20px; }
+  .underline-mark { background: linear-gradient(transparent 60%, var(--accent-soft) 60%); padding: 0 4px; }
+  .hero-desc { font-size: 17px; color: var(--ink-soft); font-weight: 500; line-height: 1.7; }
+
+  /* 상단 CTA */
+  .top-cta {
+    background: var(--bg-alt); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 24px; margin-bottom: 32px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .top-cta-text { font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+  .top-cta-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .top-cta-link {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink);
+  }
+  .top-cta-link.primary { background: var(--accent); color: var(--white); border-color: var(--accent); }
+  .naver-mark {
+    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+    background: #03C75A; color: #FFFFFF; font-weight: 900; font-size: 11px; border-radius: 3px;
+    line-height: 1; letter-spacing: -0.5px; flex-shrink: 0;
+  }
+
+  /* 카드 / 스텝 */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 28px; margin-bottom: 32px; }
+  .step-label { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .step-line { width: 28px; height: 2px; background: var(--accent); }
+  .step-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent); }
+  .card-title { font-size: 24px; font-weight: 900; letter-spacing: -0.6px; margin-bottom: 6px; }
+  .card-subtitle { font-size: 14px; color: var(--ink-mute); font-weight: 500; margin-bottom: 22px; line-height: 1.6; }
+  .card-subtitle a, .note a, .src-list a, .method a { color: var(--accent); font-weight: 800; text-decoration: none; }
+
+  /* 모드 탭 */
+  .mode-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .mode-tab {
+    text-align: left; background: var(--white); border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 16px 20px; cursor: pointer; font-family: inherit; color: var(--ink);
+    transition: all 0.15s ease;
+  }
+  .mode-tab:hover { border-color: var(--accent); }
+  .mode-tab .mt-num { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 6px; display: block; }
+  .mode-tab .mt-title { font-size: 17px; font-weight: 900; letter-spacing: -0.4px; display: block; margin-bottom: 4px; }
+  .mode-tab .mt-desc { font-size: 13px; color: var(--ink-mute); font-weight: 500; display: block; }
+  .mode-tab.active { background: var(--dark-warm); border-color: var(--dark-warm); color: var(--white); }
+  .mode-tab.active .mt-num { color: var(--accent-soft); }
+  .mode-tab.active .mt-desc { color: #D9D2C5; }
+
+  /* 입력 */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-2 > *, .grid-3 > *, .cmp-grid > * { min-width: 0; }
+  .input-group { margin-bottom: 18px; }
+  .input-group:last-child { margin-bottom: 0; }
+  .label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  input[type=number], input[type=text], select {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: inherit; font-size: 16px; color: var(--ink); font-weight: 700;
+    transition: all 0.15s ease; width: 100%; min-width: 0;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .input-hint { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 6px; line-height: 1.55; }
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 150px; }
+  .input-unit { position: absolute; top: 50%; transform: translateY(-50%); left: 0; pointer-events: none;
+    font-size: 15px; font-weight: 700; color: var(--ink-mute); white-space: nowrap; visibility: hidden; }
+  .input-currency {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800;
+    padding: 5px 10px; border-radius: 6px; pointer-events: none; letter-spacing: -0.3px;
+    white-space: nowrap; max-width: 135px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .input-currency.empty { background: transparent; color: var(--ink-mute); font-weight: 600; }
+  .adv-set { margin-top: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); padding: 0 20px; }
+  .adv-set > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 16px 0; }
+  .adv-set > summary::-webkit-details-marker { display: none; }
+  .adv-set > summary::before { content: '+'; display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; align-items: center; justify-content: center; font-size: 15px; }
+  .adv-set[open] > summary::before { content: '−'; }
+  .adv-set-title { font-weight: 800; font-size: 15px; color: var(--dark-warm); }
+  .adv-set-sum { font-size: 13px; font-weight: 700; color: var(--brown); }
+  .adv-body { padding-bottom: 20px; }
+  .sub-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .sub-card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; letter-spacing: -0.3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink-soft);
+    border-radius: 999px; padding: 5px 12px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .is-hidden { display: none !important; }
+  .fixed-note {
+    background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 12px 14px;
+    font-size: 13.5px; font-weight: 700; line-height: 1.55;
+  }
+
+  /* 토글 */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .toggle-text-title { font-size: 15px; font-weight: 800; }
+  .toggle-text-desc { font-size: 13px; color: var(--ink-mute); font-weight: 500; margin-top: 2px; }
+  .toggle-switch { position: relative; display: inline-block; width: 56px; height: 30px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #C4B8A3; transition: 0.25s; border-radius: 30px; }
+  .toggle-slider:before {
+    position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px;
+    background: var(--white); transition: 0.25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(26px); }
+
+  /* 종목 행 */
+  .sr-head { display: grid; gap: 8px; padding: 0 14px 6px; }
+  .sr-head span { font-size: 11.5px; font-weight: 800; color: var(--ink-mute); letter-spacing: 0.3px; }
+  .sr-grid { display: grid; gap: 8px; align-items: center; }
+  .usd .sr-grid, .usd .sr-head { grid-template-columns: minmax(0, 1.25fr) repeat(5, minmax(0, 1fr)) 36px; }
+  .krw .sr-grid, .krw .sr-head { grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr)) 36px; }
+  .stock-row { position: relative; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); padding: 12px 14px; margin-bottom: 10px; }
+  .stock-row.ria-row { border-color: var(--accent); }
+  .f-lab { display: none; font-size: 11px; font-weight: 700; color: var(--ink-mute); margin-bottom: 4px; white-space: nowrap; }
+  .f-wrap { position: relative; }
+  .f-wrap input { padding: 10px 34px 10px 10px; font-size: 14px; text-align: right; }
+  .f-wrap.name input { padding-right: 10px; text-align: left; }
+  .f-suf { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); font-size: 11.5px; font-weight: 800; color: var(--ink-mute); pointer-events: none; }
+  .sr-del { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); color: var(--ink-mute); font-size: 18px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .sr-del:hover { border-color: var(--accent); color: var(--accent); }
+  .sr-line { margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--brown); line-height: 1.6; }
+  .sr-line b { font-weight: 900; }
+  .c-gain { color: var(--accent); }
+  .c-loss { color: var(--loss); }
+  .sr-ria { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+  .sr-ria label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .sr-ria input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .sr-ria select { width: auto; padding: 6px 10px; font-size: 13px; }
+  .row-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+  .row-count { font-size: 12.5px; font-weight: 700; color: var(--ink-mute); margin-left: auto; }
+
+  /* 결과 */
+  .verdict {
+    background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 30px 32px; margin-bottom: 20px;
+  }
+  .verdict-label { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); margin-bottom: 10px; }
+  .verdict-main { font-size: 30px; font-weight: 900; letter-spacing: -0.8px; line-height: 1.3; }
+  .verdict-main .hl { color: #FFB38F; }
+  .verdict-sub { font-size: 15px; color: #D9D2C5; font-weight: 500; margin-top: 12px; line-height: 1.7; }
+  .verdict-sub strong { color: var(--white); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+  .stat-card.accent { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .stat-card.accent .stat-label, .stat-card.accent .stat-sub { color: #FDE3D6; }
+  .stat-card.accent-green { background: var(--green); border-color: var(--green); color: var(--white); }
+  .stat-card.accent-green .stat-label, .stat-card.accent-green .stat-sub { color: #B8C4B8; }
+  .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 8px; }
+  .stat-value { font-size: 26px; font-weight: 900; letter-spacing: -1px; line-height: 1.15; word-break: keep-all; }
+  .stat-sub { font-size: 13px; color: var(--ink-mute); margin-top: 6px; font-weight: 500; line-height: 1.5; }
+
+  .chart-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 13px; color: var(--ink-mute); font-weight: 500; margin-bottom: 18px; line-height: 1.6; }
+  .chart-container { position: relative; height: 300px; width: 100%; }
+
+  /* 표 */
+  .table-wrap { overflow-x: auto; margin-top: 16px; border-radius: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
+  .data-table th {
+    background: var(--bg-alt); padding: 12px 10px; text-align: right; font-weight: 700; color: var(--ink-soft);
+    font-size: 11.5px; border-bottom: 1.5px solid var(--border); white-space: nowrap;
+  }
+  .data-table th:first-child { text-align: left; }
+  .data-table td {
+    padding: 11px 10px; text-align: right; border-bottom: 1px solid var(--border);
+    font-weight: 600; color: var(--ink); white-space: nowrap;
+  }
+  .data-table td:first-child { text-align: left; font-weight: 800; color: var(--dark-warm); max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .data-table tbody tr:hover { background: var(--bg-alt); }
+  .data-table .highlight-row { background: var(--accent-soft); }
+  .data-table .highlight-row td { font-weight: 800; }
+  .data-table td.c-accent { color: var(--accent); font-weight: 800; }
+  .data-table td.c-loss { color: var(--loss); font-weight: 800; }
+  .data-table td.c-brown { color: var(--brown); }
+  .data-table td.c-left { text-align: left; }
+  .sim-table { min-width: 520px; }
+  .tag-mini {
+    display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--white); margin-left: 6px; vertical-align: 1px;
+  }
+  .tag-mini.base { background: var(--brown); }
+
+  /* 안내 박스 */
+  .note { font-size: 13.5px; color: var(--ink-soft); font-weight: 600; line-height: 1.7; }
+  .note b, .note strong { color: var(--ink); }
+  .head-msg { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 16px 18px; font-size: 15px; font-weight: 700; line-height: 1.65; margin-bottom: 20px; }
+  .head-msg b { color: var(--accent); }
+  .warn-list { list-style: none; display: grid; gap: 8px; margin-top: 16px; }
+  .warn-list li { position: relative; padding-left: 16px; font-size: 13.5px; color: var(--ink-soft); font-weight: 600; line-height: 1.65; }
+  .warn-list li::before { content: ''; position: absolute; left: 2px; top: 9px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .warn-list li b { color: var(--ink); }
+  .cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp-box { border: 1.5px solid var(--border); border-radius: 16px; padding: 18px 20px; background: var(--white); }
+  .cmp-box.me { border-color: var(--accent); background: #FCEFE6; }
+  .cmp-kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 6px; }
+  .cmp-title { font-size: 17px; font-weight: 900; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .cmp-value { font-size: 24px; font-weight: 900; color: var(--accent); letter-spacing: -0.6px; margin-bottom: 8px; }
+  .cmp-box ul { list-style: none; display: grid; gap: 4px; }
+  .cmp-box li { font-size: 13px; color: var(--ink-soft); font-weight: 600; line-height: 1.55; padding-left: 12px; position: relative; }
+  .cmp-box li::before { content: '·'; position: absolute; left: 2px; font-weight: 900; }
+
+  .rule-list { display: grid; gap: 0; border-top: 1px solid var(--border); }
+  .rule { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--border); }
+  .rule-k { font-size: 13.5px; font-weight: 800; color: var(--dark-warm); }
+  .rule-v { font-size: 13.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.65; }
+  .rule-v b { color: var(--ink); }
+  .rule-v .badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--green); color: #fff; margin-right: 6px; vertical-align: 1px; }
+  .rule-v .badge.warn { background: var(--brown); }
+  .src-list { margin-top: 16px; font-size: 12.5px; color: var(--ink-mute); font-weight: 600; line-height: 1.8; }
+  .src-list a { font-weight: 700; word-break: break-all; }
+
+  /* 인사이트 */
+  .insight-box { background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 36px; margin-bottom: 24px; }
+  .insight-label { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .insight-label-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); }
+  .insight-title { font-size: 24px; font-weight: 900; margin-bottom: 16px; letter-spacing: -0.5px; line-height: 1.35; }
+  .insight-desc { font-size: 15px; line-height: 1.75; color: #D9D2C5; font-weight: 500; }
+  .insight-desc strong { color: var(--white); }
+  .insight-cta {
+    margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.12);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+  .insight-cta-text { font-size: 14px; color: #D9D2C5; font-weight: 600; margin-right: 8px; }
+  .cta-link {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; text-decoration: none; transition: all 0.2s ease; letter-spacing: -0.2px;
+  }
+  .cta-link.primary { background: var(--accent); color: var(--white); }
+  .cta-link.primary:hover { background: #E66740; transform: translateY(-1px); }
+  .cta-link.secondary { background: rgba(255,255,255,0.08); color: var(--white); border: 1px solid rgba(255,255,255,0.15); }
+  .cta-link.secondary:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+
+  .link-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    background: var(--dark-warm); color: var(--white); border: none; padding: 11px 18px; border-radius: 12px;
+    font-family: inherit; font-weight: 700; cursor: pointer; transition: all 0.15s ease; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+  }
+  .btn:hover { background: var(--accent); }
+  .btn.accent { background: var(--accent); }
+  .btn.accent:hover { background: #E66740; }
+  .btn.ghost { background: var(--white); color: var(--ink); border: 1.5px solid var(--border); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: default; }
+
+  .method h4 { font-size: 15px; font-weight: 900; margin: 18px 0 8px; color: var(--dark-warm); }
+  .method h4:first-child { margin-top: 0; }
+  .method p, .method li { font-size: 13.5px; color: var(--ink-soft); font-weight: 600; line-height: 1.75; }
+  .method ul { padding-left: 18px; display: grid; gap: 4px; }
+  .formula { background: var(--bg); border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; font-weight: 700; color: var(--dark-warm); line-height: 1.8; margin: 6px 0 4px; }
+
+  .hub-back { display: inline-block; font-size: 13px; color: var(--ink-mute); font-weight: 600; text-decoration: none; margin-bottom: 12px; }
+  .hub-back:hover { color: var(--accent); }
+  footer { text-align: center; font-size: 12.5px; color: var(--ink-mute); font-weight: 500; line-height: 1.8; padding: 24px 0 8px; }
+
+  /* 표 내려받기 (CSV·엑셀) */
+  .dl-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+  .dl-btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--accent, #D9542B); background: #FBF7F0; color: var(--accent, #D9542B); cursor: pointer; line-height: 1.2; }
+  .dl-btn:hover { background: var(--accent, #D9542B); color: #fff; }
+  .dl-note { font-size: 12px; color: #8B7B6B; font-weight: 600; word-break: keep-all; }
+
+  @media (max-width: 1100px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 900px) {
+    .sr-head { display: none; }
+    .f-lab { display: block; }
+    .usd .sr-grid, .krw .sr-grid { grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+    .sr-grid .f-name { grid-column: 1 / -1; padding-right: 44px; }
+    .sr-del { position: absolute; top: 12px; right: 12px; }
+    .sr-grid .f-fee { grid-column: 1 / -1; }
+  }
+  @media (max-width: 768px) {
+    body { padding: 16px 12px; }
+    header { margin-bottom: 24px; }
+    .card { padding: 18px 16px !important; margin-bottom: 20px !important; border-radius: 16px !important; }
+    .hero-title { font-size: 34px !important; letter-spacing: -1.2px !important; line-height: 1.18 !important; }
+    .hero-desc { font-size: 15px; }
+    .hero-desc br { display: none; }
+    .top-cta { flex-direction: column; align-items: stretch; padding: 16px; }
+    .top-cta-links { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .top-cta-link { justify-content: center; }
+    .mode-tabs { grid-template-columns: 1fr; gap: 8px; }
+    .mode-tab { padding: 14px 16px; }
+    .mode-tab .mt-title { font-size: 16px; }
+    .grid-2, .grid-3, .cmp-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .sub-card { padding: 16px; }
+    .adv-set { padding: 0 14px; }
+    .stock-row { padding: 12px; }
+    .input-wrap input { padding-right: 128px; }
+    .input-currency { max-width: 118px; font-size: 12px; }
+    .card-title { font-size: 20px; }
+    .verdict { padding: 22px 18px; border-radius: 16px; }
+    .verdict-main { font-size: 22px; letter-spacing: -0.5px; }
+    .verdict-sub { font-size: 14px; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { padding: 16px !important; border-radius: 14px !important; }
+    .stat-value { font-size: 19px !important; }
+    .stat-sub { font-size: 12px; }
+    .chart-title { font-size: 15px; line-height: 1.4; }
+    .insight-box { padding: 24px 18px; border-radius: 16px; }
+    .insight-title { font-size: 19px !important; }
+    .insight-cta { flex-direction: column; align-items: stretch; }
+    .cta-link { justify-content: center; }
+    .table-wrap { margin: 16px -16px 0; padding: 0 16px; -webkit-overflow-scrolling: touch; }
+    .data-table { font-size: 11.5px; min-width: 700px; }
+    .sim-table { min-width: 0; }
+    .sim-table td, .sim-table th { white-space: normal; word-break: keep-all; }
+    .sim-table th:nth-child(2), .sim-table td:nth-child(2) { display: none; }
+    .sim-table td:nth-child(3), .sim-table td:nth-child(4) { white-space: nowrap; }
+    .data-table th { padding: 8px 6px; font-size: 10.5px; }
+    .data-table td { padding: 8px 6px; }
+    .rule { grid-template-columns: 1fr; gap: 4px; }
+    .head-msg { font-size: 14px; }
+    .link-row .btn-row { width: 100%; }
+    .link-row .btn-row .btn { flex: 1; justify-content: center; }
+    .row-count { width: 100%; margin-left: 0; }
+  }
+  @media (max-width: 380px) {
+    .hero-title { font-size: 29px !important; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .top-cta-links { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a href="https://ttokjaetv.github.io/" class="hub-back">← 똑재TV 계산기 모음</a>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">똑</div>
+      <div>
+        <div class="logo-name">똑재TV</div>
+        <div class="logo-sub">OVERSEAS STOCK TAX</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="hero">
+    <span class="tag"><span class="dot"></span>해외주식 양도소득세 계산기</span>
+    <h1 class="hero-title">
+      미국 주식 판 돈,<br>
+      <span class="underline-mark">세금은 얼마</span> 낼까?
+    </h1>
+    <p class="hero-desc">
+      올해 판 종목을 넣으면 원화 기준 양도차익, 손익통산, 기본공제 250만원을 반영한 세금을 바로 계산합니다.<br>
+      이익 중 주가가 만든 몫과 환율이 만든 몫, 연말에 손실 종목을 팔면 줄어드는 세금까지 같이 보여드립니다.
+    </p>
+  </div>
+
+  <div class="top-cta">
+    <div class="top-cta-text">💡 <strong>해외 직투 vs 국내상장 해외ETF, 세금 차이</strong>가 궁금하신가요? 똑재TV에서 매주 만나보세요.</div>
+    <div class="top-cta-links">
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="top-cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="top-cta-link">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페
+      </a>
+    </div>
+  </div>
+
+  <!-- STEP 01 : 판 종목 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 01 / 올해 판 종목</span></div>
+    <h2 class="card-title">올해 판 해외주식을 넣어 주세요</h2>
+    <p class="card-subtitle">2026년에 <b>결제가 끝난 매도</b>만 넣습니다(최대 20종목). 아직 안 판 종목의 평가손익은 세금과 상관없습니다.
+      증권사 앱의 <b>'해외주식 양도세 조회(미리 계산)'</b> 화면을 보고 있다면 오른쪽 '원화로 직접 입력'이 편합니다.</p>
+
+    <div class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="usd" role="tab" type="button">
+        <span class="mt-num">입력 방식 1</span>
+        <span class="mt-title">달러 + 환율로 입력</span>
+        <span class="mt-desc">매수·매도 달러 금액과 그날 환율 → 환율 몫까지 분해</span>
+      </button>
+      <button class="mode-tab" data-mode="krw" role="tab" type="button">
+        <span class="mt-num">입력 방식 2</span>
+        <span class="mt-title">원화로 직접 입력</span>
+        <span class="mt-desc">증권사 양도세 조회 화면의 취득가액·양도가액을 그대로</span>
+      </button>
+    </div>
+
+    <div id="rows-box" class="usd">
+      <div class="sr-head" id="sr-head"></div>
+      <div id="rows"></div>
+    </div>
+    <div class="row-tools">
+      <button class="btn ghost" type="button" id="add-row">+ 종목 추가</button>
+      <button class="btn accent" type="button" id="example">예시로 계산해 보기</button>
+      <button class="btn ghost" type="button" id="clear-rows">모두 지우기</button>
+      <span class="row-count" id="row-count"></span>
+    </div>
+    <p class="input-hint" id="mode-hint" style="margin-top:12px;"></p>
+
+    <div class="sub-card" style="margin-top:20px;">
+      <div class="input-group">
+        <label class="label" for="other">올해 이미 확정된 다른 해외주식 손익 (선택)</label>
+        <div class="input-wrap">
+          <input type="number" id="other" data-unit="원" step="10000" placeholder="없으면 비워 두세요">
+          <span class="input-currency empty" id="other-display">0원</span>
+        </div>
+        <div class="input-hint">위 표에 넣지 않은 종목, 다른 증권사 계좌에서 판 해외주식의 원화 양도차익(필요경비 뺀 금액)을 합쳐서 넣습니다. 손실이면 <b>−3000000</b>처럼 입력하세요.<br>
+          국내 비상장주식·대주주 상장주식처럼 <b>국내에서 과세되는 주식 양도</b>가 올해 있다면 기본공제 250만원을 함께 나눠 쓰고 세율도 달라서 이 계산과 차이가 납니다.</div>
+      </div>
+    </div>
+
+    <details class="adv-set" id="ria-set">
+      <summary><span class="adv-set-title">국내시장 복귀계좌(RIA)에서 판 종목이 있다면</span><span class="adv-set-sum" id="ria-summary">2026년 한시 · 양도소득금액 50~100% 공제</span></summary>
+      <div class="adv-body">
+        <p class="note" style="margin-bottom:14px;">
+          <b>2025년 12월 23일까지 보유하던 해외주식</b>을 RIA로 옮겨 팔고, 매도대금을 <b>1년간</b> 국내 상장주식·국내 주식형 펀드·예탁금으로 두면 그 양도소득금액의 일부를 공제해 주는 제도입니다(조세특례제한법 제91조의26, 2026년 3월 31일 국회 통과).
+          매도 결제 시기별로 <b>5월 말까지 100% · 6~7월 80% · 8~12월 50%</b>, 매도대금 기준 <b>1인 5,000만원</b> 한도입니다.
+          올해 RIA 밖 계좌(연금저축·ISA 포함)에서 해외주식·해외주식형 ETF를 <b>순매수</b>하면 공제율이 그만큼 줄어듭니다. 1년 안에 원금을 빼면 감면세액이 추징됩니다.
+        </p>
+        <div class="sub-card" style="margin-bottom:14px;">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-text-title">RIA 공제를 계산에 넣기</div>
+              <div class="toggle-text-desc">켜면 각 종목 줄에 'RIA에서 매도' 체크와 매도 시기가 나옵니다</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="ria-on">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div id="ria-body" class="is-hidden">
+          <span class="label">RIA 밖 계좌에서 올해 해외주식 등을 순매수한 금액 (매수 − 매도, 원)</span>
+          <div class="grid-3">
+            <div class="input-group">
+              <label class="label" for="n1" style="color:var(--ink-mute);">1~5월 (가중치 100%)</label>
+              <div class="input-wrap"><input type="number" id="n1" data-unit="원" step="100000" placeholder="0"><span class="input-currency empty" id="n1-display">0원</span></div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="n2" style="color:var(--ink-mute);">6~7월 (가중치 80%)</label>
+              <div class="input-wrap"><input type="number" id="n2" data-unit="원" step="100000" placeholder="0"><span class="input-currency empty" id="n2-display">0원</span></div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="n3" style="color:var(--ink-mute);">8~12월 (가중치 50%)</label>
+              <div class="input-wrap"><input type="number" id="n3" data-unit="원" step="100000" placeholder="0"><span class="input-currency empty" id="n3-display">0원</span></div>
+            </div>
+          </div>
+          <div class="input-hint">판 금액이 더 많았던 기간은 − 로 넣으세요. 가중 합계가 0보다 작으면 0으로 봅니다.<br>
+            공제액 = (RIA 매도분 양도소득금액 × 시기별 공제율) × {1 − RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)} — 키움·유안타증권 RIA 설명서의 산식입니다. 최종 공제액은 증권사·국세청 계산으로 꼭 확인하세요.</div>
+          <div class="fixed-note" id="ria-note" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- STEP 02 : 결과 -->
+  <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 02 / 결과 (2026년 귀속 · 2027년 5월 신고)</span></div>
+  <div class="verdict" id="verdict">
+    <div class="verdict-label" id="verdict-label">RESULT</div>
+    <div class="verdict-main" id="verdict-main">-</div>
+    <div class="verdict-sub" id="verdict-sub"></div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card accent"><div class="stat-label">예상 세액 (22%)</div><div class="stat-value" id="s1-value">-</div><div class="stat-sub" id="s1-sub"></div></div>
+    <div class="stat-card"><div class="stat-label">통산 양도차익</div><div class="stat-value" id="s2-value">-</div><div class="stat-sub" id="s2-sub"></div></div>
+    <div class="stat-card"><div class="stat-label">과세표준</div><div class="stat-value" id="s3-value">-</div><div class="stat-sub" id="s3-sub"></div></div>
+    <div class="stat-card accent-green"><div class="stat-label">세금 없이 더 실현 가능</div><div class="stat-value" id="s4-value">-</div><div class="stat-sub" id="s4-sub"></div></div>
+  </div>
+
+  <div class="card">
+    <h3 class="chart-title">종목별 계산</h3>
+    <p class="chart-subtitle" id="table-subtitle">-</p>
+    <div class="dl-bar">
+      <button type="button" class="dl-btn" id="dl-csv">CSV 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-xlsx">엑셀(.xlsx) 내려받기</button>
+      <span class="dl-note">엑셀에는 종목별 표와 세액 계산 요약이 함께 들어갑니다 (원 단위 숫자)</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead id="res-head"></thead>
+        <tbody id="res-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="chart-card">
+    <h3 class="chart-title">이익은 주가가 만들었을까, 환율이 만들었을까?</h3>
+    <p class="chart-subtitle" id="chart-subtitle">-</p>
+    <div class="chart-container" id="chart-box"><canvas id="split-chart"></canvas></div>
+  </div>
+
+  <!-- STEP 03 : 연말 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 03 / 연말 손익통산</span></div>
+    <h2 class="card-title">올해가 가기 전에 할 수 있는 것</h2>
+    <p class="card-subtitle">해외주식 양도세는 1월 1일~12월 31일(결제일 기준) 판 것을 모두 더하고 빼서 계산합니다. 그래서 연말 전에 무엇을 파느냐에 따라 세금이 달라집니다.</p>
+    <div class="head-msg" id="headroom-msg">-</div>
+
+    <div class="grid-2" style="align-items:start;">
+      <div class="sub-card">
+        <div class="sub-card-title">손실 종목을 연내에 팔면?</div>
+        <div class="input-group">
+          <label class="label" for="loss">아직 안 판 종목의 평가손실 (원화 기준)</label>
+          <div class="input-wrap">
+            <input type="number" id="loss" data-unit="원" step="100000" min="0" placeholder="예: 3000000">
+            <span class="input-currency empty" id="loss-display">0원</span>
+          </div>
+          <div class="chips" id="loss-chips">
+            <button class="chip" type="button" data-v="1000000">100만</button>
+            <button class="chip" type="button" data-v="3000000">300만</button>
+            <button class="chip" type="button" data-v="5000000">500만</button>
+            <button class="chip" type="button" data-v="10000000">1,000만</button>
+            <button class="chip" type="button" id="loss-zero-chip" data-v="0">세금 0원 되는 손실</button>
+          </div>
+          <div class="input-hint">증권사 앱의 원화 평가손익(환율 반영)을 양수로 넣으세요. 손실을 확정하면 그만큼 올해 양도차익에서 빠집니다.</div>
+        </div>
+        <div class="fixed-note" id="loss-result">-</div>
+      </div>
+      <div>
+        <div class="table-wrap" style="margin-top:0;">
+          <table class="data-table sim-table">
+            <thead><tr><th>연내 확정하는 손실</th><th>통산 양도차익</th><th>예상 세액</th><th>줄어드는 세금</th></tr></thead>
+            <tbody id="sim-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <ul class="warn-list">
+      <li><b>마감은 12월 31일이 아니라 '결제일'입니다.</b> 미국 주식은 체결 다음 영업일(T+1)에 결제되므로, 2026년은 보통 <b>미국 현지 12월 30일(수) 거래분</b>까지가 올해 손익으로 잡힙니다(12월 31일 체결분은 2027년 1월 결제). 증권사마다 연말 공지를 따로 내니 꼭 확인하세요.</li>
+      <li><b>손실은 다음 해로 넘어가지 않습니다.</b> 올해 통산해서 남은 손실은 내년 이익에서 뺄 수 없습니다(이월공제 없음). 반대로 기본공제 250만원도 해마다 새로 생기니, 이익을 몇 해에 나눠 실현하면 공제를 여러 번 쓸 수 있습니다.</li>
+      <li><b>팔고 다시 사도 손실은 인정되는 것으로 봅니다.</b> 한국 소득세법에는 미국의 30일 재매수 제한(wash-sale) 같은 규정이 없고, 이 규정은 미국 납세 의무자 대상이라 국내 거주자에게는 직접 적용되지 않는다는 해설이 일반적입니다. 다만 다시 산 물량은 새 매수가가 취득가액이 되므로 나중에 팔 때 이익이 그만큼 커집니다. 세금을 없앤다기보다 <b>올해 공제·손실을 활용하고 나머지는 미루는</b> 효과입니다.</li>
+      <li><b>같은 종목을 여러 번 나눠 샀다면</b> 어떤 물량이 팔린 것으로 보는지(먼저 산 것부터 판 것으로 보는 선입선출이 원칙)에 따라 취득가액이 달라집니다. 연말 손실 매도 전에는 증권사의 '양도세 미리 계산' 화면에서 실제로 잡히는 손실을 확인하세요.</li>
+      <li id="ria-loss-tip" class="is-hidden"><b>RIA를 쓰고 있다면</b> RIA 밖 계좌에서 해외주식을 팔면 올해 순매수 금액이 줄어 RIA 공제율이 오히려 올라갈 수 있습니다. 이 시뮬레이션은 손실 매도를 RIA 밖에서 한다고 보고 RIA 공제액은 그대로 두었습니다.</li>
+    </ul>
+  </div>
+
+  <!-- 비교 박스 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">비교 / 국내상장 해외ETF라면?</span></div>
+    <h3 class="chart-title">같은 미국 주식이라도 '어디에 상장된 상품이냐'로 세금이 바뀝니다</h3>
+    <p class="chart-subtitle">국내 증권시장에 상장된 해외 ETF(예: 미국 S&amp;P500·나스닥100을 따라가는 국내 ETF)는 매매차익이 <b>양도소득세가 아니라 배당소득세 15.4%</b>로 과세됩니다.</p>
+    <div class="cmp-grid">
+      <div class="cmp-box me">
+        <div class="cmp-kicker">지금 계산한 방식</div>
+        <div class="cmp-title">해외 상장 주식·ETF 직접 투자</div>
+        <div class="cmp-value" id="cmp-direct">-</div>
+        <ul>
+          <li>양도소득세 22% (지방소득세 포함)</li>
+          <li>1년치 손익을 통산 + 기본공제 연 250만원</li>
+          <li>분리과세 — 금융소득종합과세에 합산되지 않음</li>
+          <li>다음 해 5월 직접(또는 증권사 대행) 신고</li>
+        </ul>
+      </div>
+      <div class="cmp-box">
+        <div class="cmp-kicker">같은 거래를 일반계좌 국내상장 해외ETF로 했다면</div>
+        <div class="cmp-title">국내상장 해외ETF (일반계좌)</div>
+        <div class="cmp-value" id="cmp-etf">-</div>
+        <ul>
+          <li>매매차익에 배당소득세 15.4% — 팔 때 원천징수</li>
+          <li>손실 난 ETF와 통산 안 됨 · 250만원 공제 없음</li>
+          <li>이자·배당과 합쳐 금융소득 연 2,000만원을 넘으면 종합과세 합산</li>
+          <li>실제 과세는 보유기간 과세표준기준가격 상승분과 매매차익 중 작은 금액</li>
+          <li>ISA·연금저축·IRP에 담으면 과세 이연·감면</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px;" id="cmp-note">-</p>
+    <div class="btn-row" style="margin-top:14px;">
+      <a class="btn" href="https://ttokjaetv.github.io/etf-vs-direct/" target="_blank" rel="noopener">해외ETF vs 직투 비교 계산기 →</a>
+      <a class="btn ghost" href="https://ttokjaetv.github.io/trading-fee/" target="_blank" rel="noopener">증권사 수수료 비교표 →</a>
+    </div>
+  </div>
+
+  <!-- 세법 기준 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">확인한 세법 기준 (2026년 10월 12일 확인)</span></div>
+    <h3 class="chart-title">이 계산기가 따르는 규칙</h3>
+    <p class="chart-subtitle">2026년 귀속(2027년 5월 신고) 기준입니다. 세법은 자주 바뀌니 신고 전에는 국세청 홈택스·증권사 안내로 다시 확인하세요.</p>
+    <div class="rule-list">
+      <div class="rule"><div class="rule-k">기본공제</div><div class="rule-v"><span class="badge">계산 반영</span><b>연 250만원</b>, 사람 1명당 1번. 소득세법 제103조 제1항 제2호의 '주식등' 그룹이라 <b>국내 과세 대상 주식(비상장·대주주 등) 양도소득과 합쳐서</b> 250만원입니다.</div></div>
+      <div class="rule"><div class="rule-k">세율</div><div class="rule-v"><span class="badge">계산 반영</span><b>22%</b> = 양도소득세 20%(소득세법 제104조 제1항 제12호, 외국법인 주식) + 지방소득세 2%. 외국법인 주식은 국내 중소기업 10% 세율 대상이 아닙니다.</div></div>
+      <div class="rule"><div class="rule-k">손익통산</div><div class="rule-v"><span class="badge">계산 반영</span>같은 해 해외주식끼리 이익·손실을 합산. 2020년부터 해외주식이 국내주식과 같은 그룹이 되어 <b>국내 과세 대상 주식 양도손익과도 통산</b>됩니다(확정신고 때). 국내 상장주식을 소액주주로 장내에서 판 것은 비과세라 통산 대상이 아닙니다. 남은 손실은 <b>이월되지 않습니다</b>.</div></div>
+      <div class="rule"><div class="rule-k">원화 환산</div><div class="rule-v"><span class="badge">계산 반영</span>양도가액·취득가액을 각각 대금을 받거나 낸 날, 즉 <b>매도·매수 결제일의 기준환율(달러) 또는 재정환율(엔·홍콩달러 등)</b>로 환산합니다(소득세법 시행령 제178조의5). 체결일 환율이 아닙니다. 그래서 환율이 오른 만큼도 과세 대상 이익이 됩니다.</div></div>
+      <div class="rule"><div class="rule-k">필요경비</div><div class="rule-v"><span class="badge">계산 반영</span>매매수수료, 매도 시 붙는 거래소·SEC 수수료 등 양도비용. 각 비용이 결제된 날 환율로 원화 환산합니다. 이 계산기는 원화 합계를 직접 넣게 했습니다.</div></div>
+      <div class="rule"><div class="rule-k">취득가액 계산</div><div class="rule-v">같은 종목을 여러 번 샀다면 먼저 산 것부터 판 것으로 보는 <b>선입선출</b>이 원칙입니다(소득세법 시행령 제162조 제5항). 종목별 매수 금액은 증권사 화면의 '취득가액'을 그대로 쓰는 게 가장 정확합니다.</div></div>
+      <div class="rule"><div class="rule-k">신고·납부</div><div class="rule-v">예정신고 없이 <b>다음 해 5월 1일~31일 확정신고</b>(2026년 귀속분은 2027년 5월 31일(월)까지). 무신고 가산세 20%, 과소신고 10%, 납부지연 하루 0.022%. 여러 증권사를 쓰면 모두 합쳐 한 번에 신고합니다.</div></div>
+      <div class="rule"><div class="rule-k">증권사 대행 신고</div><div class="rule-v">많은 증권사가 매년 초 신청을 받아 해외주식 양도세 신고를 대행해 줍니다(무료 여부·신청 기간은 증권사 공지 확인). 다른 증권사 거래 내역이 있으면 함께 제출해야 합니다. 홈택스에서 직접 신고할 수도 있습니다.</div></div>
+      <div class="rule"><div class="rule-k">국내시장 복귀계좌(RIA)</div><div class="rule-v"><span class="badge">시행 중 · 선택 계산</span>조세특례제한법 제91조의26 신설, 2026년 3월 31일 국회 본회의 통과, 2026년 1월 1일 이후 RIA 매도분부터 2026년 12월 31일까지 한시 적용. 2025년 12월 23일 보유분 대상 · 매도대금 1인 5,000만원 한도 · 매도 시기별 양도소득금액 공제율 100%(~5월)·80%(6~7월)·50%(8~12월) · 1년간 국내 주식 등에 투자(원금 인출 시 추징) · RIA 밖 해외주식 순매수만큼 공제율 차감. 위 'RIA에서 판 종목이 있다면'에서 켜면 계산에 넣습니다.</div></div>
+      <div class="rule"><div class="rule-k">환헤지 상품 공제</div><div class="rule-v"><span class="badge warn">계산 미반영</span>같은 법 개정으로 신설된 조세특례제한법 제91조의27 — 개인이 환헤지 파생상품에 투자하면 투자(매입)금액의 5%를 2026년 해외주식 양도소득금액에서 공제(1인 500만원 한도, 2026년 한시). 대상 상품·요건이 증권사마다 다르게 안내되고 있어 이 계산기에는 넣지 않았습니다.</div></div>
+    </div>
+    <div class="src-list">
+      출처(2026-10-12 열람):
+      <a href="https://www.taxtimes.co.kr/news/article.html?no=274537" target="_blank" rel="noopener">한국세정신문 '환율안정 3법 국회 본회의 통과'(2026-03-31)</a> ·
+      <a href="https://taxtimes.co.kr/news/article.html?no=274352" target="_blank" rel="noopener">한국세정신문 'RIA 등 8개 세법개정안 세부 내용'(2026-03-17)</a> ·
+      <a href="https://www.hankyung.com/article/2026033191357" target="_blank" rel="noopener">한국경제(2026-03-31)</a> ·
+      <a href="https://download.kiwoom.com/deploy/AG003/pdf/AG003_30.pdf" target="_blank" rel="noopener">키움증권 국내시장복귀계좌 핵심설명서</a> ·
+      <a href="https://www.myasset.com/myasset/static/notice/260320_02_3.pdf" target="_blank" rel="noopener">유안타증권 RIA 세제혜택 유의사항</a> ·
+      <a href="https://kbthink.com/investment/issues/ria.html" target="_blank" rel="noopener">KB증권 RIA 안내</a> ·
+      <a href="https://money2.daishin.com/html/Notice/2021/downloads/n_122.pdf" target="_blank" rel="noopener">대신증권 주식 양도소득세 안내(국내·국외 통산·250만원 공제)</a> ·
+      <a href="https://taxly.kr/post/914-양도소득세-기본공제-손익통산-양도소득기본공제-양도차손익통산-by-부산세무사-부산회계사" target="_blank" rel="noopener">세무사 해설(소득세법 제102·103조)</a> ·
+      <a href="https://www.watax.kr/transfer-tax/overseas-stock-currency-acquisition-cost" target="_blank" rel="noopener">세무법인 해설(결제일 환율·선입선출)</a> ·
+      <a href="https://incometax.calculate.co.kr/stock-capital-gains-tax-calculator/stock-capital-gains-tax-rate" target="_blank" rel="noopener">주식 양도세율표(소득세법 제104조)</a> ·
+      <a href="https://news.bizwatch.co.kr/article/market/2025/12/05/0017" target="_blank" rel="noopener">비즈워치 연말 양도세(T+1·12월 30일, 2025-12-07)</a> ·
+      <a href="https://www.kmjournal.net/news/articleView.html?idxno=5994" target="_blank" rel="noopener">KMJ 칼럼(wash-sale 미적용, 2025-12-08)</a> ·
+      <a href="https://www.taxtimes.co.kr/news/article.html?no=263240" target="_blank" rel="noopener">한국세정신문 국세청 Q&amp;A(통산·이월공제·가산세)</a> ·
+      <a href="https://www.samsungpop.com/v2/today-invest/series/taxguide-2676" target="_blank" rel="noopener">삼성증권 증여 이월과세 안내</a> ·
+      법령 원문: <a href="https://www.law.go.kr/법령/소득세법" target="_blank" rel="noopener">소득세법</a> · <a href="https://www.law.go.kr/법령/조세특례제한법" target="_blank" rel="noopener">조세특례제한법</a> (국가법령정보센터)
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="link-row">
+      <div>
+        <h3 class="chart-title">결과 공유하기</h3>
+        <p class="chart-subtitle" style="margin-bottom:0;">'결과 복사'는 요약 몇 줄을, '링크 복사'는 입력한 종목이 그대로 담긴 주소를 복사합니다. 카페 댓글이나 메모에 붙여넣으세요.</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn accent" type="button" id="copy-result">결과 복사</button>
+        <button class="btn" type="button" id="copy-link">링크 복사</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <div class="insight-label">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9542B" stroke-width="2"><path d="M12 3l1.9 5.8L20 10l-4.5 3.3L17 20l-5-3.5L7 20l1.5-6.7L4 10l6.1-1.2L12 3z"/></svg>
+      <span class="insight-label-text">KEY INSIGHT</span>
+    </div>
+    <h3 class="insight-title" id="insight-title">-</h3>
+    <p class="insight-desc" id="insight-desc">-</p>
+    <div class="insight-cta">
+      <div class="insight-cta-text">📊 세금까지 따져 보면, 어떤 계좌에 어떤 상품으로 담을지가 달라집니다.</div>
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="cta-link secondary">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페 가입
+      </a>
+    </div>
+  </div>
+
+  <div class="card method">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">계산 방법과 가정</span></div>
+    <h4>1. 종목별 원화 양도차익</h4>
+    <div class="formula">매수 원화 = 매수 금액($) × 매수 결제일 환율 &nbsp;·&nbsp; 매도 원화 = 매도 금액($) × 매도 결제일 환율<br>양도차익 = 매도 원화 − 매수 원화 − 필요경비</div>
+    <p>달러로 넣으면 이익을 둘로 나눠 보여드립니다. <b>주가 몫</b> = (매도 $ − 매수 $) × 매수 환율, <b>환율 몫</b> = 매도 $ × (매도 환율 − 매수 환율). 두 몫을 더하면 수수료 빼기 전 양도차익과 정확히 같습니다. 달러로는 본전이어도 환율이 올랐다면 원화로는 이익이라 세금이 나옵니다.</p>
+    <h4>2. 통산과 세액</h4>
+    <div class="formula">통산 양도차익 = 종목별 양도차익 합계 + 다른 해외주식 손익<br>과세표준 = max(0, 통산 양도차익 − RIA 공제액 − 기본공제 250만원)<br>세액 = 과세표준 × 20%(양도소득세) + 과세표준 × 2%(지방소득세)</div>
+    <p>각 세액은 원 단위 미만을 버렸습니다. 실제 고지·납부에서는 끝수 처리로 몇 원 차이 날 수 있습니다. '세금 없이 더 실현 가능'은 250만원 + RIA 공제액 − 통산 양도차익으로, 앞으로 RIA 밖에서 생기는 이익을 기준으로 한 값입니다.</p>
+    <h4>3. RIA 공제 (켰을 때만)</h4>
+    <p>RIA에서 매도로 체크한 종목만 대상입니다. 양도소득금액과 매도금액에 매도 시기별 가중치(100%·80%·50%)를 곱해 더하고, RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)만큼 공제율을 줄입니다. RIA 매도금액이 5,000만원을 넘으면 5,000만원 몫만큼 비례로 잘라 계산했습니다(증권사의 실제 한도 적용 방식과 다를 수 있음).</p>
+    <h4>계산에 넣지 않은 것</h4>
+    <ul>
+      <li><b>가족 증여 후 양도</b>: 배우자·직계존비속에게 증여받은 주식을 1년 안에 팔면 증여자의 취득가액으로 양도차익을 계산합니다(2025년부터, 소득세법 제97조의2). 증여세와 함께 따로 따져 봐야 합니다.</li>
+      <li><b>국내 주식 대주주 양도세</b>: 국내 상장주식 대주주·비상장주식 양도는 세율(20~30%)이 달라 이 계산에 넣지 않았습니다. 같은 250만원 공제를 나눠 쓴다는 점만 기억하세요.</li>
+      <li><b>배당소득</b>: 해외주식 배당은 현지에서 원천징수(미국 15%)되고 금융소득에 포함되는 별개의 세금입니다.</li>
+      <li><b>외화예금·달러 환전 환차익</b>: 주식 매매와 별개라 넣지 않았습니다.</li>
+      <li><b>환헤지 상품 투자 공제(조특법 제91조의27)</b>, 외국에서 낸 양도세의 외국납부세액공제, 주식 분할·합병·스핀오프 등 기업 행사로 인한 취득가액 조정.</li>
+      <li><b>해외 파생상품·국내상장 해외ETF</b>: 각각 파생상품 양도세(별도 공제 250만원), 배당소득세 15.4%로 따로 과세됩니다.</li>
+      <li>건강보험료·연말정산 부양가족 요건 등 양도소득이 다른 제도에 주는 영향.</li>
+    </ul>
+  </div>
+
+  <footer>
+    ※ 본 계산기는 입력한 숫자로 해외주식 양도소득세를 어림해 보는 참고용 단순 계산 도구이며, 세무 상담이나 신고서를 대신하지 않습니다.<br>
+    실제 세액은 증권사 거래 내역, 취득가액 산정 방식, 세법 개정 등에 따라 달라질 수 있습니다. 특정 종목·상품의 매수·매도 권유가 아닙니다.<br>
+    🔒 입력한 숫자는 이 브라우저 안에서만 계산되며, 서버로 보내거나 따로 저장하지 않습니다.
+  </footer>
+</div>
+
+<script>
+// ============== 표 내려받기 (CSV · 엑셀 .xlsx) — 외부 라이브러리 없이 동작 ==============
+// TJX.csv('파일이름', rows) · TJX.xlsx('파일이름', [{ name: '시트', rows, widths }])
+// rows = [[머리글...], [값...], ...]  숫자는 숫자 그대로 넣으면 엑셀에서 계산 가능한 숫자 칸이 됩니다
+const TJX = (() => {
+  const enc = new TextEncoder();
+  function csvText(rows) {
+    return '﻿' + rows.map(r => r.map(v => {
+      if (v == null) return '';
+      if (typeof v === 'number') return isFinite(v) ? String(Math.round(v * 100) / 100) : '';
+      const t = String(v);
+      return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }).join(',')).join('\r\n');
+  }
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zipStore(files) {   // 압축 없이 묶기 (엑셀은 이 형식도 그대로 엽니다)
+    const parts = [], central = []; let off = 0;
+    for (const f of files) {
+      const nm = enc.encode(f.name), d = enc.encode(f.text), c = crc32(d);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(12, 0x21, true); lh.setUint32(14, c, true); lh.setUint32(18, d.length, true); lh.setUint32(22, d.length, true);
+      lh.setUint16(26, nm.length, true);
+      parts.push(new Uint8Array(lh.buffer), nm, d);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+      ch.setUint16(14, 0x21, true); ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true);
+      ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+      central.push(new Uint8Array(ch.buffer), nm);
+      off += 30 + nm.length + d.length;
+    }
+    const cs = central.reduce((s, a) => s + a.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cs, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colName = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  function sheetXml(sh) {
+    const rows = sh.rows || [];
+    const nCol = rows.reduce((m, r) => Math.max(m, r.length), 1);
+    const widths = sh.widths || [];
+    const cols = Array.from({ length: nCol }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${widths[i] || (i === 0 ? 12 : 16)}" customWidth="1"/>`).join('');
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+      const ref = colName(ci) + (ri + 1);
+      if (v == null || v === '') return '';
+      if (typeof v === 'number' && isFinite(v)) {
+        const st = ri === 0 ? 2 : (Math.abs(v - Math.round(v)) < 1e-9 ? 1 : 3);
+        return `<c r="${ref}" s="${st}"><v>${Math.round(v * 10000) / 10000}</v></c>`;
+      }
+      return `<c r="${ref}" t="inlineStr"${ri === 0 ? ' s="2"' : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    }).join('') + '</row>').join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${body}</sheetData></worksheet>`;
+  }
+  function xlsxBlob(sheets) {
+    const W = 'http://schemas.openxmlformats.org';
+    const files = [
+      { name: '[Content_Types].xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${W}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>` },
+      { name: '_rels/.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships"><Relationship Id="rId1" Type="${W}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+      { name: 'xl/workbook.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${W}/spreadsheetml/2006/main" xmlns:r="${W}/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${esc(String(s.name || 'Sheet' + (i + 1)).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>` },
+      { name: 'xl/_rels/workbook.xml.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="${W}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="${W}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+      { name: 'xl/styles.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${W}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><name val="맑은 고딕"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+      ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(s) })),
+    ];
+    return zipStore(files);
+  }
+  function save(blob, name) {
+    const a = document.createElement('a'), u = URL.createObjectURL(blob);
+    a.href = u; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1500);
+  }
+  const stamp = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+  return {
+    csvText, xlsxBlob,
+    csv(name, rows) { save(new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' }), `${name}_${stamp()}.csv`); },
+    xlsx(name, sheets) { save(xlsxBlob(sheets), `${name}_${stamp()}.xlsx`); },
+  };
+})();
+
+// ============== 기준값 (2026년 10월 확인) ==============
+const TAX = {
+  year: 2026,
+  basic: 2500000,       // 양도소득 기본공제 (소득세법 제103조, 주식등 그룹 연 250만원)
+  natRate: 0.20,        // 양도소득세 (외국법인 주식 20%)
+  locRate: 0.02,        // 지방소득세 (양도소득세의 10% = 과세표준의 2%)
+  etfRate: 0.154,       // 국내상장 해외ETF 매매차익 배당소득세 (지방세 포함)
+  riaCap: 50000000,     // RIA 매도대금 한도 1인 5,000만원
+};
+const RIA_PERIODS = [
+  { v: 1, label: '1~5월 매도 (100%)', w: 1.0 },
+  { v: 2, label: '6~7월 매도 (80%)', w: 0.8 },
+  { v: 3, label: '8~12월 매도 (50%)', w: 0.5 },
+];
+const MAX_ROWS = 20;
+const LOSS_STEPS = [0, 1000000, 3000000, 5000000, 10000000];
+
+// ============== 포맷 ==============
+const won = n => Math.round(n).toLocaleString() + '원';
+const signWon = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString() + '원';
+// 원 → "1억 2,345만 6,789원" (정확한 금액을 억·만 단위로 읽기 쉽게)
+function korWon(n) {
+  const neg = n < 0; n = Math.abs(Math.round(n));
+  if (n === 0) return '0원';
+  const eok = Math.floor(n / 1e8), man = Math.floor((n % 1e8) / 1e4), rest = n % 1e4;
+  const parts = [];
+  if (eok) parts.push(eok.toLocaleString() + '억');
+  if (man) parts.push(man.toLocaleString() + '만');
+  if (rest) parts.push(rest.toLocaleString());
+  return (neg ? '−' : '') + parts.join(' ') + '원';
+}
+// 짧은 표기 (차트 눈금): 1.2억 / 345만 / 9,000
+function shortWon(n) {
+  const neg = n < 0; n = Math.abs(n);
+  let s;
+  if (n >= 1e8) s = (n / 1e8).toFixed(n >= 1e9 ? 0 : 2).replace(/\.?0+$/, '') + '억';
+  else if (n >= 1e4) s = Math.round(n / 1e4).toLocaleString() + '만';
+  else s = Math.round(n).toLocaleString();
+  return (neg ? '−' : '') + s;
+}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const gainCls = n => n > 0 ? 'c-gain' : n < 0 ? 'c-loss' : '';
+
+// ============== 상태 ==============
+const blankRow = () => ({ name: '', pb: '', rb: '', ps: '', rs: '', bk: '', sk: '', fee: '', ria: false, per: 3 });
+const S = { mode: 'usd', rows: [blankRow(), blankRow()] };
+let splitChart = null, lastRes = null;
+
+const EXAMPLE = [
+  { name: '예시) AAPL', pb: '8000', rb: '1300', ps: '10500', rs: '1420', fee: '15000' },
+  { name: '예시) NVDA', pb: '5000', rb: '1350', ps: '7200', rs: '1395', fee: '12000' },
+  { name: '예시) TSLA (손실)', pb: '6000', rb: '1450', ps: '4800', rs: '1400', fee: '9000' },
+];
+
+// ============== 계산 엔진 ==============
+const numOr = (v, d = NaN) => { const x = parseFloat(v); return isFinite(x) ? x : d; };
+function calcRow(r, mode) {
+  const fee = Math.max(0, numOr(r.fee, 0));
+  let buyK, sellK, priceP = null, fxP = null;
+  if (mode === 'usd') {
+    const pb = numOr(r.pb), rb = numOr(r.rb), ps = numOr(r.ps), rs = numOr(r.rs);
+    if (!(pb > 0 && rb > 0 && ps >= 0 && rs > 0) || r.ps === '') return null;
+    buyK = pb * rb; sellK = ps * rs;
+    priceP = (ps - pb) * rb;          // 주가 변동분 (매수 환율로 고정)
+    fxP = ps * (rs - rb);             // 환율 변동분 (매도 달러 기준)
+  } else {
+    const bk = numOr(r.bk), sk = numOr(r.sk);
+    if (!(bk > 0 && sk >= 0) || r.sk === '') return null;
+    buyK = bk; sellK = sk;
+  }
+  const gain = sellK - buyK - fee;
+  return { buyK, sellK, fee, gain, priceP, fxP };
+}
+// 통산 양도차익 → 세액
+function taxOf(total, riaDed) {
+  const base = Math.max(0, Math.round(total) - Math.round(riaDed) - TAX.basic);
+  const nat = Math.floor(base * TAX.natRate);
+  const loc = Math.floor(base * TAX.locRate);
+  return { base, nat, loc, tax: nat + loc };
+}
+function readNum(id) { return numOr(document.getElementById(id).value, 0); }
+
+function compute() {
+  const riaOn = document.getElementById('ria-on').checked;
+  const rows = S.rows.map((r, i) => ({ i, r, c: calcRow(r, S.mode) }));
+  const valid = rows.filter(x => x.c);
+  const other = readNum('other');
+  const sumRows = valid.reduce((s, x) => s + x.c.gain, 0);
+  const total = sumRows + other;
+  const pos = valid.reduce((s, x) => s + Math.max(0, x.c.gain), 0) + Math.max(0, other);
+  const neg = valid.reduce((s, x) => s + Math.min(0, x.c.gain), 0) + Math.min(0, other);
+
+  // RIA 공제
+  const ria = { on: riaOn, ded: 0, rows: 0, sale: 0, wSale: 0, wGain: 0, net: 0, factor: 1, capScale: 1, rate: 0 };
+  if (riaOn) {
+    const rr = valid.filter(x => x.r.ria);
+    ria.rows = rr.length;
+    ria.sale = rr.reduce((s, x) => s + x.c.sellK, 0);
+    ria.capScale = ria.sale > TAX.riaCap ? TAX.riaCap / ria.sale : 1;
+    rr.forEach(x => {
+      const w = (RIA_PERIODS.find(p => p.v === +x.r.per) || RIA_PERIODS[2]).w;
+      ria.wSale += x.c.sellK * w * ria.capScale;
+      ria.wGain += x.c.gain * w * ria.capScale;
+    });
+    ria.net = Math.max(0, readNum('n1') * 1 + readNum('n2') * 0.8 + readNum('n3') * 0.5);
+    ria.factor = ria.wSale > 0 ? Math.max(0, 1 - ria.net / ria.wSale) : 0;
+    ria.pre = Math.max(0, ria.wGain);
+    ria.ded = Math.round(ria.pre * ria.factor);
+  }
+  const t = taxOf(total, ria.ded);
+  const basicUsed = Math.min(TAX.basic, Math.max(0, Math.round(total) - ria.ded));
+  const remain = Math.max(0, TAX.basic + ria.ded - Math.round(total));
+  const noRia = taxOf(total, 0);
+  return { rows, valid, other, sumRows, total, pos, neg, ria, ...t, basicUsed, remain, noRia };
+}
+
+// ============== 종목 행 그리기 ==============
+function headHtml() {
+  return S.mode === 'usd'
+    ? '<span>종목명 (선택)</span><span>매수 금액</span><span>매수 환율</span><span>매도 금액</span><span>매도 환율</span><span>필요경비</span><span></span>'
+    : '<span>종목명 (선택)</span><span>취득가액 (원화)</span><span>양도가액 (원화)</span><span>필요경비</span><span></span>';
+}
+function field(i, key, lab, suf, ph, cls = '') {
+  const v = S.rows[i][key];
+  return `<div class="${cls}"><span class="f-lab">${lab}</span><div class="f-wrap"><input type="number" inputmode="decimal" step="any" min="0" data-i="${i}" data-k="${key}" value="${esc(v)}" placeholder="${ph}" aria-label="${lab}"><span class="f-suf">${suf}</span></div></div>`;
+}
+function rowHtml(r, i) {
+  const riaOn = document.getElementById('ria-on').checked;
+  const name = `<div class="f-name"><span class="f-lab">종목명 (선택)</span><div class="f-wrap name"><input type="text" maxlength="30" data-i="${i}" data-k="name" value="${esc(r.name)}" placeholder="종목 ${i + 1}" aria-label="종목명"></div></div>`;
+  const del = `<button class="sr-del" type="button" data-i="${i}" aria-label="종목 빼기">×</button>`;
+  const cells = S.mode === 'usd'
+    ? field(i, 'pb', '매수 금액', '$', '예: 8000') + field(i, 'rb', '매수 환율', '원', '예: 1300') +
+      field(i, 'ps', '매도 금액', '$', '예: 10500') + field(i, 'rs', '매도 환율', '원', '예: 1420') + field(i, 'fee', '필요경비 (수수료 등)', '원', '0', 'f-fee')
+    : field(i, 'bk', '취득가액 (원화)', '원', '예: 10400000') + field(i, 'sk', '양도가액 (원화)', '원', '예: 14910000') + field(i, 'fee', '필요경비 (수수료 등)', '원', '0', 'f-fee');
+  const riaUi = riaOn ? `<div class="sr-ria"><label><input type="checkbox" class="ria-chk" data-i="${i}"${r.ria ? ' checked' : ''}> RIA 계좌에서 매도</label>
+      <select class="ria-per" data-i="${i}" aria-label="RIA 매도 시기"${r.ria ? '' : ' disabled'}>${RIA_PERIODS.map(p => `<option value="${p.v}"${+r.per === p.v ? ' selected' : ''}>${p.label}</option>`).join('')}</select></div>` : '';
+  return `<div class="stock-row${riaOn && r.ria ? ' ria-row' : ''}" data-i="${i}"><div class="sr-grid">${name}${cells}${del}</div><div class="sr-line" id="line-${i}"></div>${riaUi}</div>`;
+}
+function renderRows() {
+  const box = document.getElementById('rows-box');
+  box.className = S.mode;
+  document.getElementById('sr-head').innerHTML = headHtml();
+  document.getElementById('rows').innerHTML = S.rows.map(rowHtml).join('');
+  document.getElementById('add-row').disabled = S.rows.length >= MAX_ROWS;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === S.mode));
+  document.getElementById('mode-hint').innerHTML = S.mode === 'usd'
+    ? '환율은 <b>결제일의 기준환율</b>을 넣습니다(서울외국환중개 고시, 증권사 양도세 조회 화면에도 나옵니다). 실제로 환전한 환율이 아닙니다. 여러 번 나눠 샀다면 팔린 수량의 매수 금액 합계와 평균 환율을 넣으면 어림이 됩니다.'
+    : '증권사 \'해외주식 양도소득세 조회/미리 계산\' 화면의 <b>원화 취득가액·양도가액·필요경비</b>를 종목별로 옮겨 적으세요. 이미 결제일 환율로 환산된 금액입니다.';
+}
+function updateLines(res) {
+  res.rows.forEach(x => {
+    const el = document.getElementById('line-' + x.i);
+    if (!el) return;
+    if (!x.c) { el.innerHTML = '<span style="color:var(--ink-mute);">매수·매도 금액' + (S.mode === 'usd' ? '과 환율' : '') + '을 넣으면 이 종목의 양도차익이 나옵니다</span>'; return; }
+    const c = x.c;
+    let s = `매수 ${korWon(c.buyK)} → 매도 ${korWon(c.sellK)}${c.fee ? ` − 경비 ${korWon(c.fee)}` : ''} = <b class="${gainCls(c.gain)}">양도차익 ${signWon(c.gain)}</b>`;
+    if (S.mode === 'usd') s += ` <span style="color:var(--ink-mute);">(주가 몫 ${signWon(c.priceP)} · 환율 몫 ${signWon(c.fxP)})</span>`;
+    el.innerHTML = s;
+  });
+  const n = res.valid.length;
+  document.getElementById('row-count').textContent = `${S.rows.length}/${MAX_ROWS}줄 · 계산된 종목 ${n}개`;
+}
+
+// ============== 결과 그리기 ==============
+function render() {
+  const res = compute();
+  lastRes = res;
+  updateLines(res);
+  const has = res.valid.length > 0 || res.other !== 0;
+  const vMain = document.getElementById('verdict-main');
+  const vSub = document.getElementById('verdict-sub');
+  document.getElementById('verdict-label').textContent = `${TAX.year}년 해외주식 양도소득세`;
+  if (!has) {
+    vMain.innerHTML = '판 종목을 넣거나 <span class="hl">예시로 계산해 보기</span>를 눌러 보세요';
+    vSub.innerHTML = `올해 판 종목이 없다면 양도세도 없습니다. 기본공제 <strong>250만원</strong>을 통째로 쓸 수 있는 상태입니다.`;
+  } else {
+    vMain.innerHTML = `올해 양도세는 <span class="hl">${won(res.tax)}</span> · 비과세 한도 <span class="hl">${korWon(res.remain)}</span> 남음`;
+    let sub;
+    if (res.total <= 0) {
+      sub = `종목을 모두 통산하면 <strong>${korWon(res.total)}</strong>${res.total < 0 ? ' 손실' : ''}이라 낼 세금이 없습니다. 올해 남은 손실은 내년으로 넘어가지 않으니, 올해 안에 이익을 <strong>${korWon(res.remain)}</strong>까지 실현해도 세금이 0원입니다.`;
+    } else if (res.tax === 0) {
+      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>이 기본공제 250만원${res.ria.ded ? '과 RIA 공제' : ''} 안이라 낼 세금이 없습니다. 다만 세법은 과세표준이 0원이어도 확정신고 대상으로 정하고 있어(소득세법 제110조), 증권사 대행 신고 등으로 정리해 두는 편이 깔끔합니다.`;
+    } else {
+      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>에서 기본공제 250만원${res.ria.ded ? `과 RIA 공제 <strong>${korWon(res.ria.ded)}</strong>` : ''}을 빼고 22%를 곱했습니다. <strong>2027년 5월 31일(월)까지</strong> 신고·납부합니다(증권사 대행 신고 가능).`;
+      if (res.ria.ded) sub += ` RIA 공제가 없었다면 <strong>${won(res.noRia.tax)}</strong>이었습니다.`;
+    }
+    vSub.innerHTML = sub;
+  }
+  // 카드
+  document.getElementById('s1-value').textContent = won(res.tax);
+  document.getElementById('s1-sub').textContent = `양도소득세 ${won(res.nat)} + 지방소득세 ${won(res.loc)}`;
+  document.getElementById('s2-value').textContent = korWon(res.total);
+  document.getElementById('s2-sub').textContent = `이익 ${korWon(res.pos)} · 손실 ${korWon(res.neg)}`;
+  document.getElementById('s3-value').textContent = korWon(res.base);
+  document.getElementById('s3-sub').textContent = `통산 − 기본공제 ${korWon(res.basicUsed)} 사용${res.ria.ded ? ` − RIA 공제 ${korWon(res.ria.ded)}` : ''}`;
+  document.getElementById('s4-value').textContent = korWon(res.remain);
+  document.getElementById('s4-sub').textContent = res.remain > 0 ? '이만큼은 더 팔아 이익을 내도 세금 0원' : '이제부터 이익 100만원마다 세금 22만원';
+
+  renderTable(res);
+  drawChart(res);
+  renderYearEnd(res);
+  renderCompare(res);
+  renderRia(res);
+  renderInsight(res);
+  syncUrl();
+}
+
+function renderTable(res) {
+  const usd = S.mode === 'usd', riaOn = res.ria.on;
+  document.getElementById('res-head').innerHTML = `<tr><th>종목</th><th>취득가액(원)</th><th>양도가액(원)</th><th>필요경비</th><th>양도차익</th>${usd ? '<th>주가 몫</th><th>환율 몫</th>' : ''}${riaOn ? '<th>RIA</th>' : ''}</tr>`;
+  const cols = 5 + (usd ? 2 : 0) + (riaOn ? 1 : 0);
+  let html = res.valid.map(x => {
+    const c = x.c, nm = x.r.name || `종목 ${x.i + 1}`;
+    return `<tr><td title="${esc(nm)}">${esc(nm)}</td><td class="c-brown">${won(c.buyK)}</td><td>${won(c.sellK)}</td><td>${won(c.fee)}</td>
+      <td class="${c.gain >= 0 ? 'c-accent' : 'c-loss'}">${signWon(c.gain)}</td>
+      ${usd ? `<td>${signWon(c.priceP)}</td><td>${signWon(c.fxP)}</td>` : ''}
+      ${riaOn ? `<td>${x.r.ria ? (RIA_PERIODS.find(p => p.v === +x.r.per) || RIA_PERIODS[2]).label.replace(' 매도', '') : '-'}</td>` : ''}</tr>`;
+  }).join('');
+  if (!res.valid.length) html = `<tr><td colspan="${cols}" style="text-align:center;color:var(--ink-mute);font-weight:600;">아직 계산된 종목이 없습니다</td></tr>`;
+  if (res.other) html += `<tr><td>다른 해외주식 손익</td><td>-</td><td>-</td><td>-</td><td class="${res.other >= 0 ? 'c-accent' : 'c-loss'}">${signWon(res.other)}</td>${usd ? '<td>-</td><td>-</td>' : ''}${riaOn ? '<td>-</td>' : ''}</tr>`;
+  const sp = res.valid.reduce((s, x) => s + (x.c.priceP || 0), 0), sf = res.valid.reduce((s, x) => s + (x.c.fxP || 0), 0);
+  html += `<tr class="highlight-row"><td>통산 합계</td><td>${won(res.valid.reduce((s, x) => s + x.c.buyK, 0))}</td><td>${won(res.valid.reduce((s, x) => s + x.c.sellK, 0))}</td><td>${won(res.valid.reduce((s, x) => s + x.c.fee, 0))}</td><td>${signWon(res.total)}</td>${usd ? `<td>${signWon(sp)}</td><td>${signWon(sf)}</td>` : ''}${riaOn ? `<td>${res.ria.ded ? '공제 ' + won(res.ria.ded) : '-'}</td>` : ''}</tr>`;
+  document.getElementById('res-body').innerHTML = html;
+  document.getElementById('table-subtitle').textContent = usd
+    ? '원화 금액 = 달러 × 결제일 환율. 주가 몫은 매수 환율로 고정해 본 주가 변화, 환율 몫은 판 달러에 붙은 환율 변화입니다. 두 몫의 합 − 필요경비 = 양도차익.'
+    : '증권사 조회 화면의 원화 금액 기준입니다. 원화로 넣으면 주가·환율 몫은 나눌 수 없습니다.';
+}
+
+function drawChart(res) {
+  const card = document.getElementById('chart-card');
+  const show = S.mode === 'usd' && res.valid.length > 0;
+  card.classList.toggle('is-hidden', !show);
+  if (splitChart) { splitChart.destroy(); splitChart = null; }
+  if (!show) return;
+  const isMobile = window.innerWidth < 768;
+  const labels = res.valid.map(x => { const n = x.r.name || `종목 ${x.i + 1}`; return n.length > 14 ? n.slice(0, 13) + '…' : n; });
+  document.getElementById('chart-box').style.height = Math.max(220, 90 + res.valid.length * (isMobile ? 46 : 52)) + 'px';
+  const sp = res.valid.reduce((s, x) => s + x.c.priceP, 0), sf = res.valid.reduce((s, x) => s + x.c.fxP, 0);
+  const grossGain = sp + sf;
+  document.getElementById('chart-subtitle').innerHTML = grossGain > 0 && sf > 0
+    ? `수수료 빼기 전 이익 ${korWon(grossGain)} 중 <b>${korWon(sf)}(${Math.round(sf / grossGain * 100)}%)</b>는 환율이 만든 몫입니다. 막대가 왼쪽(−)이면 그만큼 깎인 몫입니다.`
+    : `주황은 주가 변화, 금색은 환율 변화, 회색은 필요경비입니다. 막대가 왼쪽(−)이면 그만큼 깎인 몫입니다.`;
+  splitChart = new Chart(document.getElementById('split-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '주가 몫', data: res.valid.map(x => Math.round(x.c.priceP)), backgroundColor: '#D9542B', borderRadius: 4, maxBarThickness: 30 },
+        { label: '환율 몫', data: res.valid.map(x => Math.round(x.c.fxP)), backgroundColor: '#C4A57B', borderRadius: 4, maxBarThickness: 30 },
+        { label: '필요경비', data: res.valid.map(x => -Math.round(x.c.fee)), backgroundColor: '#B7AFA3', borderRadius: 4, maxBarThickness: 30 },
+      ],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { stacked: true, grid: { color: '#EFE7DA' }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', callback: v => shortWon(v), maxTicksLimit: isMobile ? 5 : 9 } },
+        y: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Pretendard', size: isMobile ? 11 : 12, weight: 700 }, color: '#3A2F26' } },
+      },
+      plugins: {
+        legend: { position: 'top', align: 'start', labels: { font: { family: 'Pretendard', size: 12, weight: 700 }, color: '#1A1A1A', usePointStyle: true, padding: 14 } },
+        datalabels: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          backgroundColor: '#FBF7F0', titleColor: '#1A1A1A', bodyColor: '#3A2F26', borderColor: '#D9542B', borderWidth: 1.5,
+          padding: 12, titleFont: { family: 'Pretendard', size: 13, weight: 800 }, bodyFont: { family: 'Pretendard', size: 12.5, weight: 600 },
+          cornerRadius: 10, usePointStyle: true, boxPadding: 6,
+          callbacks: {
+            title: items => { const x = res.valid[items[0].dataIndex]; return x.r.name || `종목 ${x.i + 1}`; },
+            label: c => '  ' + c.dataset.label + ': ' + signWon(c.parsed.x),
+            footer: items => '양도차익: ' + signWon(res.valid[items[0].dataIndex].c.gain),
+          },
+          footerFont: { family: 'Pretendard', size: 12.5, weight: 800 }, footerColor: '#D9542B',
+        },
+      },
+    },
+  });
+}
+
+function lossNeeded(res) { return Math.max(0, Math.round(res.total) - res.ria.ded - TAX.basic); }
+function renderYearEnd(res) {
+  const msg = document.getElementById('headroom-msg');
+  const has = res.valid.length > 0 || res.other !== 0;
+  if (!has) msg.innerHTML = '아직 판 종목이 없다면, 올해 <b>250만원</b>까지는 이익을 실현해도 세금이 없습니다. 오래 들고 있는 수익 종목이 있다면 해마다 250만원씩 나눠 실현하는 방법도 있습니다.';
+  else if (res.remain > 0) msg.innerHTML = `올해 남은 공제 한도 안에서 <b>${korWon(res.remain)}</b>의 이익을 더 실현해도 세금은 0원입니다.${res.total < 0 ? ` (통산 손실 ${korWon(-res.total)} + 기본공제 250만원${res.ria.ded ? ' + RIA 공제' : ''})` : ''} 이 한도는 연말에 사라지고 내년에 새로 250만원이 생깁니다.`;
+  else msg.innerHTML = `기본공제 250만원은 이미 다 썼습니다. 지금부터 이익을 더 실현하면 <b>100만원마다 22만원</b>씩 세금이 붙고, 반대로 손실을 확정하면 <b>100만원마다 22만원</b>씩 줄어듭니다. 세금을 0원으로 만들려면 손실이 <b>${korWon(lossNeeded(res))}</b> 필요합니다.`;
+
+  const need = lossNeeded(res);
+  const zc = document.getElementById('loss-zero-chip');
+  zc.dataset.v = String(need);
+  zc.classList.toggle('is-hidden', need <= 0);
+  zc.textContent = `세금 0원 되는 손실 ${shortWon(need)}`;
+  const L = Math.max(0, readNum('loss'));
+  const after = taxOf(res.total - L, res.ria.ded);
+  const saved = res.tax - after.tax;
+  document.getElementById('loss-result').innerHTML = L > 0
+    ? `손실 ${korWon(L)}을 연내 확정하면 세금이 <b>${won(res.tax)} → ${won(after.tax)}</b>, <b>${won(saved)}</b> 줄어듭니다.${saved < L * 0.22 - 1 && res.tax > 0 ? ' 세금이 0원이 된 뒤의 손실은 더 줄일 세금이 없고, 내년으로 넘어가지도 않습니다.' : ''}${res.tax === 0 ? ' 지금 이미 세금이 0원이라 손실을 확정해도 줄어드는 세금이 없습니다.' : ''}`
+    : '평가손실을 넣으면, 그 종목을 연내에 팔았을 때 줄어드는 세금을 보여드립니다.';
+  const steps = LOSS_STEPS.slice();
+  if (need > 0 && !steps.includes(need)) steps.push(need);
+  if (L > 0 && !steps.includes(L)) steps.push(L);
+  steps.sort((a, b) => a - b);
+  document.getElementById('sim-body').innerHTML = steps.map(v => {
+    const t = taxOf(res.total - v, res.ria.ded);
+    const tags = (v === need && need > 0 ? '<span class="tag-mini">세금 0원</span>' : '') + (v === L && L > 0 ? '<span class="tag-mini base">입력값</span>' : '');
+    return `<tr${v === L && L > 0 ? ' class="highlight-row"' : ''}><td>${v === 0 ? '지금 그대로' : korWon(v)}${tags}</td><td>${korWon(res.total - v)}</td><td class="c-accent">${won(t.tax)}</td><td>${v === 0 ? '-' : won(res.tax - t.tax)}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('#loss-chips .chip').forEach(ch => ch.classList.toggle('on', L > 0 && +ch.dataset.v === L));
+  document.getElementById('ria-loss-tip').classList.toggle('is-hidden', !res.ria.on);
+}
+
+function renderCompare(res) {
+  const gains = res.valid.map(x => x.c.gain);
+  const posRows = gains.filter(g => g > 0).reduce((s, g) => s + g, 0);
+  const etfTax = Math.floor(posRows * 0.14) + Math.floor(posRows * 0.014);
+  document.getElementById('cmp-direct').textContent = res.valid.length ? won(res.tax) : '-';
+  document.getElementById('cmp-etf').textContent = res.valid.length ? '약 ' + won(etfTax) : '-';
+  const note = document.getElementById('cmp-note');
+  if (!res.valid.length) { note.innerHTML = '종목을 넣으면, 같은 매매차익이 국내상장 해외ETF(일반계좌)에서 났을 때의 세금을 나란히 보여드립니다.'; return; }
+  const diff = etfTax - res.tax;
+  note.innerHTML = `위 표의 종목별 이익 중 <b>플러스인 것만</b>(${korWon(posRows)}) 15.4%를 곱한 어림값입니다. 국내상장 ETF는 손실 난 ETF와 서로 상계되지 않기 때문입니다(다른 해외주식 손익 칸은 제외). ` +
+    (diff > 0 ? `이 조건에서는 직투 쪽 세금이 <b>${won(diff)}</b> 적습니다. 250만원 공제와 손익통산 덕분입니다. ` : diff < 0 ? `이 조건에서는 국내상장 ETF 쪽이 <b>${won(-diff)}</b> 적습니다. 이익이 클수록 세율 차이(22% vs 15.4%)가 커집니다. ` : '') +
+    `다만 국내상장 ETF 차익은 다른 이자·배당과 합쳐 <b>금융소득 연 2,000만원</b>을 넘으면 종합과세(최고 49.5%)로 넘어가고 건강보험료에도 영향을 줄 수 있어, 금액이 큰 분은 따로 따져 봐야 합니다.`;
+}
+
+function renderRia(res) {
+  const on = res.ria.on;
+  document.getElementById('ria-body').classList.toggle('is-hidden', !on);
+  document.getElementById('ria-summary').textContent = on
+    ? (res.ria.rows ? `RIA 매도 ${res.ria.rows}종목 · 공제 ${korWon(res.ria.ded)}` : 'RIA 계산 켜짐 · 종목 줄에서 RIA 매도를 체크하세요')
+    : '2026년 한시 · 양도소득금액 50~100% 공제';
+  if (!on) return;
+  const r = res.ria;
+  let s;
+  if (!r.rows) s = '종목 줄에서 \'RIA 계좌에서 매도\'를 체크하면 공제액을 계산합니다.';
+  else {
+    s = `RIA 매도금액 ${korWon(r.sale)}${r.capScale < 1 ? ` (한도 5,000만원 초과 → ${Math.round(r.capScale * 1000) / 10}%만 반영)` : ''} · 시기 가중 양도소득금액 ${korWon(r.pre)} × 순매수 조정 ${Math.round(r.factor * 1000) / 10}% = <b>공제 ${korWon(r.ded)}</b>`;
+    if (r.net > 0) s += ` (RIA 밖 순매수 가중 ${korWon(r.net)} ÷ RIA 매도 가중 ${korWon(r.wSale)})`;
+    if (r.wGain <= 0) s += ' — RIA에서 판 종목이 통산 손실이라 공제할 이익이 없습니다.';
+  }
+  document.getElementById('ria-note').innerHTML = s;
+}
+
+function renderInsight(res) {
+  const t = document.getElementById('insight-title'), d = document.getElementById('insight-desc');
+  const sp = res.valid.reduce((s, x) => s + (x.c.priceP || 0), 0), sf = res.valid.reduce((s, x) => s + (x.c.fxP || 0), 0);
+  if (!res.valid.length && !res.other) {
+    t.textContent = '해외주식 세금은 "판 해"에, "원화"로, "1년치를 묶어서" 계산합니다';
+    d.innerHTML = '평가이익은 아무리 커도 팔기 전에는 세금이 없습니다. 팔면 그해 1월~12월(결제일 기준) 매도분을 모두 원화로 바꿔 더하고 빼서, <strong>250만원을 넘는 부분에만 22%</strong>가 붙습니다. 그래서 언제, 무엇을, 얼마나 파느냐가 곧 절세 계획입니다.';
+    return;
+  }
+  if (S.mode === 'usd' && sf > 0 && sp + sf > 0 && sf / (sp + sf) >= 0.2) {
+    t.textContent = `이익의 ${Math.round(sf / (sp + sf) * 100)}%는 환율이 만들었습니다`;
+    d.innerHTML = `주가가 오른 몫은 <strong>${korWon(sp)}</strong>, 환율이 오른 몫은 <strong>${korWon(sf)}</strong>입니다. 해외주식 양도세는 원화로 계산하기 때문에 <strong>달러로 본전이어도 환율이 오르면 세금</strong>이 나오고, 반대로 환율이 내리면 주가 이익이 깎입니다. 원화 기준 이익을 보는 습관이 필요한 이유입니다.`;
+  } else if (res.tax > 0) {
+    const need = lossNeeded(res);
+    t.textContent = `연말 전 손실 ${korWon(need)}이면 세금이 0원입니다`;
+    d.innerHTML = `지금 세금은 <strong>${won(res.tax)}</strong>입니다. 들고 있는 종목 중 원화 기준 손실인 것이 있다면 연내(결제일 기준)에 팔아 손실을 확정하는 것만으로 100만원당 22만원씩 줄어듭니다. 다만 손실은 내년으로 넘어가지 않으니 <strong>세금이 0원이 되는 선까지만</strong> 의미가 있습니다.`;
+  } else {
+    t.textContent = `올해는 ${korWon(res.remain)}까지 '세금 없는 이익 실현' 구간입니다`;
+    d.innerHTML = `기본공제 250만원은 쓰지 않으면 연말에 사라집니다. 오래 들고 있는 수익 종목이 있다면 공제 한도만큼 팔았다가 다시 사서 <strong>취득가액을 높여 두는 방법</strong>도 있습니다. 나중에 같은 종목을 팔 때 과세될 이익이 그만큼 줄어듭니다(매매 수수료와 환전 비용은 따져 보세요).`;
+  }
+}
+
+// ============== 표 내려받기 ==============
+function exportRows(res) {
+  const usd = S.mode === 'usd', riaOn = res.ria.on;
+  const head = ['종목', usd ? '매수 금액($)' : null, usd ? '매수 환율' : null, usd ? '매도 금액($)' : null, usd ? '매도 환율' : null,
+    '취득가액(원)', '양도가액(원)', '필요경비(원)', '양도차익(원)', usd ? '주가 몫(원)' : null, usd ? '환율 몫(원)' : null, riaOn ? 'RIA 매도 시기' : null].filter(h => h !== null);
+  const rows = [head];
+  res.valid.forEach(x => {
+    const c = x.c, r = x.r, R = Math.round;
+    const row = [r.name || `종목 ${x.i + 1}`];
+    if (usd) row.push(numOr(r.pb), numOr(r.rb), numOr(r.ps), numOr(r.rs));
+    row.push(R(c.buyK), R(c.sellK), R(c.fee), R(c.gain));
+    if (usd) row.push(R(c.priceP), R(c.fxP));
+    if (riaOn) row.push(r.ria ? (RIA_PERIODS.find(p => p.v === +r.per) || RIA_PERIODS[2]).label : '');
+    rows.push(row);
+  });
+  if (res.other) { const row = ['다른 해외주식 손익']; for (let k = 1; k < head.length; k++) row.push(head[k] === '양도차익(원)' ? Math.round(res.other) : ''); rows.push(row); }
+  return rows;
+}
+function summaryRows(res) {
+  const rows = [['항목', '금액(원)'],
+    ['통산 양도차익', Math.round(res.total)], ['기본공제 사용', res.basicUsed]];
+  if (res.ria.on) rows.push(['RIA 공제', res.ria.ded]);
+  rows.push(['과세표준', res.base], ['양도소득세(20%)', res.nat], ['지방소득세(2%)', res.loc], ['예상 세액 합계', res.tax], ['세금 없이 더 실현 가능한 이익', res.remain]);
+  rows.push(['기준', `${TAX.year}년 귀속 · 기본공제 250만원 · 세율 22% (2026-10-12 확인)`]);
+  return rows;
+}
+document.addEventListener('click', e => {
+  const id = e.target && e.target.id;
+  if (!lastRes || (id !== 'dl-csv' && id !== 'dl-xlsx')) return;
+  const name = '해외주식_양도소득세';
+  if (id === 'dl-csv') TJX.csv(name, exportRows(lastRes));
+  else TJX.xlsx(name, [
+    { name: '종목별', rows: exportRows(lastRes), widths: S.mode === 'usd' ? [20, 12, 10, 12, 10, 15, 15, 12, 15, 14, 14, 16] : [20, 15, 15, 12, 15, 16] },
+    { name: '세액 요약', rows: summaryRows(lastRes), widths: [28, 18] },
+  ]);
+});
+
+// ============== 결과 복사 ==============
+function resultText(res) {
+  const lines = [`[해외주식 양도소득세 계산 · ${TAX.year}년 귀속]`];
+  res.valid.forEach(x => lines.push(`- ${x.r.name || '종목 ' + (x.i + 1)}: 양도차익 ${signWon(x.c.gain)}${S.mode === 'usd' ? ` (주가 ${signWon(x.c.priceP)} / 환율 ${signWon(x.c.fxP)})` : ''}`));
+  if (res.other) lines.push(`- 다른 해외주식 손익: ${signWon(res.other)}`);
+  lines.push(`통산 양도차익 ${korWon(res.total)} − 기본공제 ${korWon(res.basicUsed)}${res.ria.ded ? ` − RIA 공제 ${korWon(res.ria.ded)}` : ''} = 과세표준 ${korWon(res.base)}`);
+  lines.push(`예상 세액 ${won(res.tax)} (양도소득세 ${won(res.nat)} + 지방소득세 ${won(res.loc)})`);
+  lines.push(`세금 없이 더 실현 가능한 이익: ${korWon(res.remain)}`);
+  lines.push('신고·납부: 2027년 5월 (참고용 계산)');
+  lines.push(location.href.split('?')[0].split('#')[0]);
+  return lines.join('\n');
+}
+function copyText(text, btn, label) {
+  const done = ok => { btn.textContent = ok ? '복사했습니다' : '복사 실패'; setTimeout(() => btn.textContent = label, 1800); };
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove(); done(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
+  else fallback();
+}
+
+// ============== 주소로 값 주고받기 ==============
+// 예: ?m=usd&r=예시)AAPL_8000_1300_10500_1420_15000*...&o=-300000&ria=1&n1=0&loss=3000000
+const cleanName = s => String(s || '').replace(/[_*]/g, ' ').slice(0, 30);
+function buildUrl() {
+  const p = new URLSearchParams();
+  p.set('m', S.mode);
+  const riaOn = document.getElementById('ria-on').checked;
+  const enc = S.rows.filter(r => calcRow(r, S.mode) || r.name).map(r => {
+    const f = S.mode === 'usd' ? [cleanName(r.name), r.pb, r.rb, r.ps, r.rs, r.fee] : [cleanName(r.name), r.bk, r.sk, r.fee];
+    if (riaOn && r.ria) f.push('R' + r.per);
+    return f.join('_');
+  });
+  if (enc.length) p.set('r', enc.join('*'));
+  const o = document.getElementById('other').value; if (o !== '') p.set('o', o);
+  if (riaOn) { p.set('ria', '1'); ['n1', 'n2', 'n3'].forEach(k => { const v = document.getElementById(k).value; if (v !== '') p.set(k, v); }); }
+  const l = document.getElementById('loss').value; if (l !== '') p.set('loss', l);
+  return location.href.split('?')[0].split('#')[0] + '?' + p.toString();
+}
+function syncUrl() { try { history.replaceState(null, '', buildUrl()); } catch (e) { /* file:// 등 */ } }
+function readUrl() {
+  let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
+  if (!q.toString()) return;
+  const okNum = v => v === '' || (isFinite(parseFloat(v)) && Math.abs(parseFloat(v)) < 1e13) ? v : '';
+  if (q.get('m') === 'krw') S.mode = 'krw';
+  if (q.get('ria') === '1') { document.getElementById('ria-on').checked = true; document.getElementById('ria-set').open = true; }
+  const r = q.get('r');
+  if (r) {
+    const rows = r.split('*').slice(0, MAX_ROWS).map(s => {
+      const f = s.split('_'), row = blankRow();
+      const last = f[f.length - 1];
+      if (/^R[123]$/.test(last)) { row.ria = true; row.per = +last[1]; f.pop(); }
+      row.name = cleanName(f[0]);
+      if (S.mode === 'usd') [row.pb, row.rb, row.ps, row.rs, row.fee] = [1, 2, 3, 4, 5].map(k => okNum(f[k] || ''));
+      else [row.bk, row.sk, row.fee] = [1, 2, 3].map(k => okNum(f[k] || ''));
+      return row;
+    });
+    if (rows.length) S.rows = rows;
+  }
+  [['o', 'other'], ['n1', 'n1'], ['n2', 'n2'], ['n3', 'n3'], ['loss', 'loss']].forEach(([k, id]) => { if (q.has(k)) document.getElementById(id).value = okNum(q.get(k)); });
+}
+
+// ============== 입력칸 숫자 뒤 단위 ==============
+const unitCanvas = document.createElement('canvas').getContext('2d');
+function placeUnits() {
+  document.querySelectorAll('.input-wrap input[data-unit]').forEach(inp => {
+    let tag = inp.parentNode.querySelector('.input-unit');
+    if (!tag) { tag = document.createElement('span'); tag.className = 'input-unit'; tag.textContent = inp.dataset.unit; inp.after(tag); }
+    const cs = getComputedStyle(inp);
+    if (inp.value === '' || !inp.offsetWidth) { tag.style.visibility = 'hidden'; return; }
+    unitCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const w = unitCanvas.measureText(inp.value).width;
+    const left = parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) + w + 4 - inp.scrollLeft;
+    tag.style.left = Math.round(left) + 'px';
+    tag.style.fontSize = cs.fontSize;
+    tag.style.visibility = left + tag.offsetWidth < inp.clientWidth - parseFloat(cs.paddingRight) + 8 ? 'visible' : 'hidden';
+  });
+}
+function updateDisplays() {
+  const set = (id, v, zero) => { const el = document.getElementById(id + '-display'); const n = parseFloat(v); const ok = isFinite(n) && n !== 0; el.textContent = ok ? korWon(n) : zero; el.classList.toggle('empty', !ok); };
+  ['other', 'n1', 'n2', 'n3', 'loss'].forEach(id => set(id, document.getElementById(id).value, '0원'));
+}
+function rerender() { updateDisplays(); placeUnits(); render(); }
+
+// ============== 이벤트 ==============
+function bindEvents() {
+  const rowsEl = document.getElementById('rows');
+  rowsEl.addEventListener('input', e => {
+    const el = e.target, i = +el.dataset.i, k = el.dataset.k;
+    if (!k || !S.rows[i]) return;
+    S.rows[i][k] = el.value;
+    render();
+  });
+  rowsEl.addEventListener('change', e => {
+    const el = e.target, i = +el.dataset.i;
+    if (el.classList.contains('ria-chk')) { S.rows[i].ria = el.checked; renderRows(); render(); }
+    if (el.classList.contains('ria-per')) { S.rows[i].per = +el.value; render(); }
+  });
+  rowsEl.addEventListener('click', e => {
+    const b = e.target.closest('.sr-del'); if (!b) return;
+    S.rows.splice(+b.dataset.i, 1);
+    if (!S.rows.length) S.rows.push(blankRow());
+    renderRows(); render();
+  });
+  document.getElementById('add-row').addEventListener('click', () => {
+    if (S.rows.length >= MAX_ROWS) return;
+    S.rows.push(blankRow()); renderRows(); render();
+    const inputs = document.querySelectorAll(`#rows .stock-row[data-i="${S.rows.length - 1}"] input`);
+    if (inputs[0]) inputs[0].focus();
+  });
+  document.getElementById('example').addEventListener('click', () => {
+    S.mode = 'usd';
+    S.rows = EXAMPLE.map(x => ({ ...blankRow(), ...x }));
+    document.getElementById('other').value = '';
+    document.getElementById('loss').value = '';
+    renderRows(); rerender();
+  });
+  document.getElementById('clear-rows').addEventListener('click', () => {
+    S.rows = [blankRow(), blankRow()];
+    ['other', 'loss', 'n1', 'n2', 'n3'].forEach(id => document.getElementById(id).value = '');
+    renderRows(); rerender();
+  });
+  document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+    const m = t.dataset.mode; if (m === S.mode) return;
+    if (m === 'krw') S.rows.forEach(r => { const c = calcRow(r, 'usd'); if (c && r.bk === '' && r.sk === '') { r.bk = String(Math.round(c.buyK)); r.sk = String(Math.round(c.sellK)); } });
+    S.mode = m; renderRows(); render();
+  }));
+  ['other', 'n1', 'n2', 'n3', 'loss'].forEach(id => document.getElementById(id).addEventListener('input', rerender));
+  document.getElementById('ria-on').addEventListener('change', () => { renderRows(); rerender(); });
+  document.getElementById('loss-chips').addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    document.getElementById('loss').value = ch.dataset.v; rerender();
+  });
+  document.getElementById('copy-link').addEventListener('click', e => copyText(buildUrl(), e.currentTarget, '링크 복사'));
+  document.getElementById('copy-result').addEventListener('click', e => copyText(resultText(lastRes || compute()), e.currentTarget, '결과 복사'));
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { placeUnits(); render(); }, 200); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeUnits);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  readUrl();
+  renderRows();
+  bindEvents();
+  rerender();
+});
+</script>
+</body>
+</html>
