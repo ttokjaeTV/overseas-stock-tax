@@ -482,9 +482,9 @@
       <summary><span class="adv-set-title">국내시장 복귀계좌(RIA)에서 판 종목이 있다면</span><span class="adv-set-sum" id="ria-summary">2026년 한시 · 양도소득금액 50~100% 공제</span></summary>
       <div class="adv-body">
         <p class="note" style="margin-bottom:14px;">
-          <b>2025년 12월 23일까지 보유하던 해외주식</b>을 RIA로 옮겨 팔고, 매도대금을 <b>1년간</b> 국내 상장주식·국내 주식형 펀드·예탁금으로 두면 그 양도소득금액의 일부를 공제해 주는 제도입니다(조세특례제한법 제91조의26, 2026년 3월 31일 국회 통과).
+          <b>2025년 12월 23일에 보유하던 해외주식</b>(종목별로 그날 보유 수량까지 · 그 뒤 더 산 수량은 제외)을 RIA로 옮겨 <b>2026년 12월 31일까지</b> 팔고, 매도대금을 <b>1년간</b> 국내 상장주식·국내 주식형 펀드·예탁금으로 두면 그 양도소득금액의 일부를 공제해 주는 제도입니다(조세특례제한법 제91조의26, 2026년 3월 31일 국회 통과).
           매도 결제 시기별로 <b>5월 말까지 100% · 6~7월 80% · 8~12월 50%</b>, 매도대금 기준 <b>1인 5,000만원</b> 한도입니다.
-          올해 RIA 밖 계좌(연금저축·ISA 포함)에서 해외주식·해외주식형 ETF를 <b>순매수</b>하면 공제율이 그만큼 줄어듭니다. 1년 안에 원금을 빼면 감면세액이 추징됩니다.
+          올해 RIA 밖 계좌(연금저축·ISA 포함)에서 해외주식·해외지수 ETF·ETN·해외주식 60% 이상 펀드를 <b>순매수</b>하면 공제율이 그만큼 줄어듭니다. 1년 안에 원금을 빼면 감면세액이 추징됩니다.
         </p>
         <div class="sub-card" style="margin-bottom:14px;">
           <div class="toggle-row">
@@ -515,7 +515,7 @@
             </div>
           </div>
           <div class="input-hint">판 금액이 더 많았던 기간은 − 로 넣으세요. 가중 합계가 0보다 작으면 0으로 봅니다.<br>
-            공제액 = (RIA 매도분 양도소득금액 × 시기별 공제율) × {1 − RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)} — 키움·유안타증권 RIA 설명서의 산식입니다. 최종 공제액은 증권사·국세청 계산으로 꼭 확인하세요.</div>
+            공제액 = (RIA 매도분 양도소득금액 × 시기별 공제율) × {1 − RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)} — 조세특례제한법 시행령 제93조의12의 산식입니다. 공제액은 통산 양도차익에서 기본공제 250만원을 뺀 금액을 넘지 못합니다. 최종 공제액은 증권사·국세청 계산으로 꼭 확인하세요.</div>
           <div class="fixed-note" id="ria-note" style="margin-top:12px;"></div>
         </div>
       </div>
@@ -720,9 +720,9 @@
     <p>달러로 넣으면 이익을 둘로 나눠 보여드립니다. <b>주가 몫</b> = (매도 $ − 매수 $) × 매수 환율, <b>환율 몫</b> = 매도 $ × (매도 환율 − 매수 환율). 두 몫을 더하면 수수료 빼기 전 양도차익과 정확히 같습니다. 달러로는 본전이어도 환율이 올랐다면 원화로는 이익이라 세금이 나옵니다.</p>
     <h4>2. 통산과 세액</h4>
     <div class="formula">통산 양도차익 = 종목별 양도차익 합계 + 다른 해외주식 손익<br>과세표준 = max(0, 통산 양도차익 − RIA 공제액 − 기본공제 250만원)<br>세액 = 과세표준 × 20%(양도소득세) + 과세표준 × 2%(지방소득세)</div>
-    <p>각 세액은 원 단위 미만을 버렸습니다. 실제 고지·납부에서는 끝수 처리로 몇 원 차이 날 수 있습니다. '세금 없이 더 실현 가능'은 250만원 + RIA 공제액 − 통산 양도차익으로, 앞으로 RIA 밖에서 생기는 이익을 기준으로 한 값입니다.</p>
+    <p>각 세액은 원 단위 미만을 버렸습니다. 실제 고지·납부에서는 끝수 처리로 몇 원 차이 날 수 있습니다. '세금 없이 더 실현 가능'은 250만원 + RIA 공제액(아래 한도 적용 전) − 통산 양도차익으로, 앞으로 RIA 밖에서 생기는 이익을 기준으로 한 값입니다.</p>
     <h4>3. RIA 공제 (켰을 때만)</h4>
-    <p>RIA에서 매도로 체크한 종목만 대상입니다. 양도소득금액과 매도금액에 매도 시기별 가중치(100%·80%·50%)를 곱해 더하고, RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)만큼 공제율을 줄입니다. RIA 매도금액이 5,000만원을 넘으면 5,000만원 몫만큼 비례로 잘라 계산했습니다(증권사의 실제 한도 적용 방식과 다를 수 있음).</p>
+    <p>RIA에서 매도로 체크한 종목만 대상입니다. 양도소득금액과 매도금액에 매도 시기별 가중치(100%·80%·50%)를 곱해 더하고, RIA 밖 순매수(가중) ÷ RIA 매도금액(가중)만큼 공제율을 줄입니다. RIA 매도금액이 5,000만원을 넘으면 5,000만원 몫만큼 비례로 잘라 계산했습니다(증권사의 실제 한도 적용 방식과 다를 수 있음). 공제액은 통산 양도차익에서 기본공제 250만원을 뺀 금액까지만 인정합니다(시행령 제93조의12②). 기본공제를 먼저 쓰고 남은 이익에서 RIA 공제를 뺍니다.</p>
     <h4>계산에 넣지 않은 것</h4>
     <ul>
       <li><b>가족 증여 후 양도</b>: 배우자·직계존비속에게 증여받은 주식을 1년 안에 팔면 증여자의 취득가액으로 양도차익을 계산합니다(2025년부터, 소득세법 제97조의2). 증여세와 함께 따로 따져 봐야 합니다.</li>
@@ -916,7 +916,7 @@ function compute() {
   const neg = valid.reduce((s, x) => s + Math.min(0, x.c.gain), 0) + Math.min(0, other);
 
   // RIA 공제
-  const ria = { on: riaOn, ded: 0, rows: 0, sale: 0, wSale: 0, wGain: 0, net: 0, factor: 1, capScale: 1, rate: 0 };
+  const ria = { on: riaOn, ded: 0, dedRaw: 0, limit: 0, rows: 0, sale: 0, wSale: 0, wGain: 0, net: 0, factor: 1, capScale: 1, rate: 0 };
   if (riaOn) {
     const rr = valid.filter(x => x.r.ria);
     ria.rows = rr.length;
@@ -930,11 +930,15 @@ function compute() {
     ria.net = Math.max(0, readNum('n1') * 1 + readNum('n2') * 0.8 + readNum('n3') * 0.5);
     ria.factor = ria.wSale > 0 ? Math.max(0, 1 - ria.net / ria.wSale) : 0;
     ria.pre = Math.max(0, ria.wGain);
-    ria.ded = Math.round(ria.pre * ria.factor);
+    ria.dedRaw = Math.round(ria.pre * ria.factor);
+    // 공제 한도: 양도소득금액에서 기본공제 250만원을 뺀 금액까지 (조특령 제93조의12②)
+    ria.limit = Math.max(0, Math.round(total) - TAX.basic);
+    ria.ded = Math.min(ria.dedRaw, ria.limit);
   }
   const t = taxOf(total, ria.ded);
   const basicUsed = Math.min(TAX.basic, Math.max(0, Math.round(total) - ria.ded));
-  const remain = Math.max(0, TAX.basic + ria.ded - Math.round(total));
+  // 이익을 더 내면 한도도 같이 늘어나므로 한도 적용 전 공제액 기준
+  const remain = Math.max(0, TAX.basic + ria.dedRaw - Math.round(total));
   const noRia = taxOf(total, 0);
   return { rows, valid, other, sumRows, total, pos, neg, ria, ...t, basicUsed, remain, noRia };
 }
@@ -1167,7 +1171,7 @@ function renderRia(res) {
   let s;
   if (!r.rows) s = '종목 줄에서 \'RIA 계좌에서 매도\'를 체크하면 공제액을 계산합니다.';
   else {
-    s = `RIA 매도금액 ${korWon(r.sale)}${r.capScale < 1 ? ` (한도 5,000만원 초과 → ${Math.round(r.capScale * 1000) / 10}%만 반영)` : ''} · 시기 가중 양도소득금액 ${korWon(r.pre)} × 순매수 조정 ${Math.round(r.factor * 1000) / 10}% = <b>공제 ${korWon(r.ded)}</b>`;
+    s = `RIA 매도금액 ${korWon(r.sale)}${r.capScale < 1 ? ` (한도 5,000만원 초과 → ${Math.round(r.capScale * 1000) / 10}%만 반영. 넘는 몫을 RIA 밖 계좌에서 팔았다면 그 금액을 위 순매수 칸에 − 로 넣으세요)` : ''} · 시기 가중 양도소득금액 ${korWon(r.pre)} × 순매수 조정 ${Math.round(r.factor * 1000) / 10}% = ${r.ded < r.dedRaw ? `${korWon(r.dedRaw)} → 한도(통산 양도차익 − 기본공제 250만원)까지만 ` : ''}<b>공제 ${korWon(r.ded)}</b>`;
     if (r.net > 0) s += ` (RIA 밖 순매수 가중 ${korWon(r.net)} ÷ RIA 매도 가중 ${korWon(r.wSale)})`;
     if (r.wGain <= 0) s += ' — RIA에서 판 종목이 통산 손실이라 공제할 이익이 없습니다.';
   }
