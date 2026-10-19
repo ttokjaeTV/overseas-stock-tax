@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://ttokjaetv.github.io/rules/v2026.1/rules.js"></script>
 <style>
   :root {
     --bg: #F5EFE6;
@@ -743,6 +744,12 @@
 </div>
 
 <script>
+if (!window.TTOKJAE_RULES) {
+  var TJR_MSG = '기준값 파일(rules.js)을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해 주세요.';
+  var tjrShow = function () { document.body.insertAdjacentHTML('afterbegin', '<div role="alert" style="background:#fdecea;color:#b3261e;padding:12px 16px;text-align:center;font-weight:600">' + TJR_MSG + '</div>'); };
+  document.body ? tjrShow() : document.addEventListener('DOMContentLoaded', tjrShow);
+  throw new Error(TJR_MSG);
+}
 // ============== 표 내려받기 (CSV · 엑셀 .xlsx) — 외부 라이브러리 없이 동작 ==============
 // TJX.csv('파일이름', rows) · TJX.xlsx('파일이름', [{ name: '시트', rows, widths }])
 // rows = [[머리글...], [값...], ...]  숫자는 숫자 그대로 넣으면 엑셀에서 계산 가능한 숫자 칸이 됩니다
@@ -823,20 +830,26 @@ const TJX = (() => {
   };
 })();
 
-// ============== 기준값 (2026년 10월 확인) ==============
+// ============== 기준값 (공용 기준 파일 rules.js의 TTOKJAE_RULES) ==============
+const TR = TTOKJAE_RULES, OS = TR.OVERSEAS_STOCK, FI = TR.FIN_INCOME;
+// 설명 문구용 표기
+const pctTxt = v => +(v * 100).toFixed(6) + '%';                      // 0.22 → '22%'
+const manTxt = v => (v / 1e4).toLocaleString('en-US') + '만원';        // 2500000 → '250만원'
 const TAX = {
   year: 2026,
-  basic: 2500000,       // 양도소득 기본공제 (소득세법 제103조, 주식등 그룹 연 250만원)
-  natRate: 0.20,        // 양도소득세 (외국법인 주식 20%)
-  locRate: 0.02,        // 지방소득세 (양도소득세의 10% = 과세표준의 2%)
-  etfRate: 0.154,       // 국내상장 해외ETF 매매차익 배당소득세 (지방세 포함)
-  riaCap: 50000000,     // RIA 매도대금 한도 1인 5,000만원
+  basic: OS.basicDeduction,      // 양도소득 기본공제 (소득세법 제103조, 주식등 그룹)
+  natRate: OS.rateNational,      // 양도소득세 (외국법인 주식)
+  locRate: OS.rateLocal,         // 지방소득세 (양도소득세의 10%)
+  etfRate: FI.withholdingWithLocal,  // 국내상장 해외ETF 매매차익 배당소득세 (지방세 포함)
+  riaCap: OS.riaSaleCap,         // RIA 매도대금 한도 1인
 };
-const RIA_PERIODS = [
-  { v: 1, label: '1~5월 매도 (100%)', w: 1.0 },
-  { v: 2, label: '6~7월 매도 (80%)', w: 0.8 },
-  { v: 3, label: '8~12월 매도 (50%)', w: 0.5 },
-];
+// 국내상장 ETF 매매차익 원천징수: 소득세 14% + 지방소득세 1.4% (곱셈 오차를 지운 값)
+const ETF_NAT = FI.withholding, ETF_LOC = +(FI.withholding * TR.INCOME_TAX.local).toFixed(10);
+const TOP_RATE = TR.INCOME_TAX.brackets[TR.INCOME_TAX.brackets.length - 1][1] * (1 + TR.INCOME_TAX.local);   // 종합과세 최고세율(지방세 포함)
+const TAX_PER_1M = manTxt(Math.round(1e6 * OS.rate));   // 이익 100만원당 세금 '22만원'
+// RIA 매도 시기별 공제율 [시작 월, 끝 월, 공제율]
+const RIA_PERIODS = OS.riaDeductionByPeriod.map(([m1, m2, w], k) => ({ v: k + 1, label: `${m1}~${m2}월 매도 (${pctTxt(w)})`, w }));
+const RIA_W = RIA_PERIODS.map(p => p.w);
 const MAX_ROWS = 20;
 const LOSS_STEPS = [0, 1000000, 3000000, 5000000, 10000000];
 
@@ -927,7 +940,7 @@ function compute() {
       ria.wSale += x.c.sellK * w * ria.capScale;
       ria.wGain += x.c.gain * w * ria.capScale;
     });
-    ria.net = Math.max(0, readNum('n1') * 1 + readNum('n2') * 0.8 + readNum('n3') * 0.5);
+    ria.net = Math.max(0, readNum('n1') * RIA_W[0] + readNum('n2') * RIA_W[1] + readNum('n3') * RIA_W[2]);
     ria.factor = ria.wSale > 0 ? Math.max(0, 1 - ria.net / ria.wSale) : 0;
     ria.pre = Math.max(0, ria.wGain);
     ria.dedRaw = Math.round(ria.pre * ria.factor);
@@ -1001,16 +1014,16 @@ function render() {
   document.getElementById('verdict-label').textContent = `${TAX.year}년 해외주식 양도소득세`;
   if (!has) {
     vMain.innerHTML = '판 종목을 넣거나 <span class="hl">예시로 계산해 보기</span>를 눌러 보세요';
-    vSub.innerHTML = `올해 판 종목이 없다면 양도세도 없습니다. 기본공제 <strong>250만원</strong>을 통째로 쓸 수 있는 상태입니다.`;
+    vSub.innerHTML = `올해 판 종목이 없다면 양도세도 없습니다. 기본공제 <strong>${manTxt(TAX.basic)}</strong>을 통째로 쓸 수 있는 상태입니다.`;
   } else {
     vMain.innerHTML = `올해 양도세는 <span class="hl">${won(res.tax)}</span> · 비과세 한도 <span class="hl">${korWon(res.remain)}</span> 남음`;
     let sub;
     if (res.total <= 0) {
       sub = `종목을 모두 통산하면 <strong>${korWon(res.total)}</strong>${res.total < 0 ? ' 손실' : ''}이라 낼 세금이 없습니다. 올해 남은 손실은 내년으로 넘어가지 않으니, 올해 안에 이익을 <strong>${korWon(res.remain)}</strong>까지 실현해도 세금이 0원입니다.`;
     } else if (res.tax === 0) {
-      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>이 기본공제 250만원${res.ria.ded ? '과 RIA 공제' : ''} 안이라 낼 세금이 없습니다. 다만 세법은 과세표준이 0원이어도 확정신고 대상으로 정하고 있어(소득세법 제110조), 증권사 대행 신고 등으로 정리해 두는 편이 깔끔합니다.`;
+      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>이 기본공제 ${manTxt(TAX.basic)}${res.ria.ded ? '과 RIA 공제' : ''} 안이라 낼 세금이 없습니다. 다만 세법은 과세표준이 0원이어도 확정신고 대상으로 정하고 있어(소득세법 제110조), 증권사 대행 신고 등으로 정리해 두는 편이 깔끔합니다.`;
     } else {
-      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>에서 기본공제 250만원${res.ria.ded ? `과 RIA 공제 <strong>${korWon(res.ria.ded)}</strong>` : ''}을 빼고 22%를 곱했습니다. <strong>2027년 5월 31일(월)까지</strong> 신고·납부합니다(증권사 대행 신고 가능).`;
+      sub = `통산 양도차익 <strong>${korWon(res.total)}</strong>에서 기본공제 ${manTxt(TAX.basic)}${res.ria.ded ? `과 RIA 공제 <strong>${korWon(res.ria.ded)}</strong>` : ''}을 빼고 ${pctTxt(OS.rate)}를 곱했습니다. <strong>2027년 5월 31일(월)까지</strong> 신고·납부합니다(증권사 대행 신고 가능).`;
       if (res.ria.ded) sub += ` RIA 공제가 없었다면 <strong>${won(res.noRia.tax)}</strong>이었습니다.`;
     }
     vSub.innerHTML = sub;
@@ -1023,7 +1036,7 @@ function render() {
   document.getElementById('s3-value').textContent = korWon(res.base);
   document.getElementById('s3-sub').textContent = `통산 − 기본공제 ${korWon(res.basicUsed)} 사용${res.ria.ded ? ` − RIA 공제 ${korWon(res.ria.ded)}` : ''}`;
   document.getElementById('s4-value').textContent = korWon(res.remain);
-  document.getElementById('s4-sub').textContent = res.remain > 0 ? '이만큼은 더 팔아 이익을 내도 세금 0원' : '이제부터 이익 100만원마다 세금 22만원';
+  document.getElementById('s4-sub').textContent = res.remain > 0 ? '이만큼은 더 팔아 이익을 내도 세금 0원' : `이제부터 이익 100만원마다 세금 ${TAX_PER_1M}`;
 
   renderTable(res);
   drawChart(res);
@@ -1113,9 +1126,9 @@ function lossNeeded(res) { return Math.max(0, Math.round(res.total) - res.ria.de
 function renderYearEnd(res) {
   const msg = document.getElementById('headroom-msg');
   const has = res.valid.length > 0 || res.other !== 0;
-  if (!has) msg.innerHTML = '아직 판 종목이 없다면, 올해 <b>250만원</b>까지는 이익을 실현해도 세금이 없습니다. 오래 들고 있는 수익 종목이 있다면 해마다 250만원씩 나눠 실현하는 방법도 있습니다.';
-  else if (res.remain > 0) msg.innerHTML = `올해 남은 공제 한도 안에서 <b>${korWon(res.remain)}</b>의 이익을 더 실현해도 세금은 0원입니다.${res.total < 0 ? ` (통산 손실 ${korWon(-res.total)} + 기본공제 250만원${res.ria.ded ? ' + RIA 공제' : ''})` : ''} 이 한도는 연말에 사라지고 내년에 새로 250만원이 생깁니다.`;
-  else msg.innerHTML = `기본공제 250만원은 이미 다 썼습니다. 지금부터 이익을 더 실현하면 <b>100만원마다 22만원</b>씩 세금이 붙고, 반대로 손실을 확정하면 <b>100만원마다 22만원</b>씩 줄어듭니다. 세금을 0원으로 만들려면 손실이 <b>${korWon(lossNeeded(res))}</b> 필요합니다.`;
+  if (!has) msg.innerHTML = `아직 판 종목이 없다면, 올해 <b>${manTxt(TAX.basic)}</b>까지는 이익을 실현해도 세금이 없습니다. 오래 들고 있는 수익 종목이 있다면 해마다 ${manTxt(TAX.basic)}씩 나눠 실현하는 방법도 있습니다.`;
+  else if (res.remain > 0) msg.innerHTML = `올해 남은 공제 한도 안에서 <b>${korWon(res.remain)}</b>의 이익을 더 실현해도 세금은 0원입니다.${res.total < 0 ? ` (통산 손실 ${korWon(-res.total)} + 기본공제 ${manTxt(TAX.basic)}${res.ria.ded ? ' + RIA 공제' : ''})` : ''} 이 한도는 연말에 사라지고 내년에 새로 ${manTxt(TAX.basic)}이 생깁니다.`;
+  else msg.innerHTML = `기본공제 ${manTxt(TAX.basic)}은 이미 다 썼습니다. 지금부터 이익을 더 실현하면 <b>100만원마다 ${TAX_PER_1M}</b>씩 세금이 붙고, 반대로 손실을 확정하면 <b>100만원마다 ${TAX_PER_1M}</b>씩 줄어듭니다. 세금을 0원으로 만들려면 손실이 <b>${korWon(lossNeeded(res))}</b> 필요합니다.`;
 
   const need = lossNeeded(res);
   const zc = document.getElementById('loss-zero-chip');
@@ -1126,7 +1139,7 @@ function renderYearEnd(res) {
   const after = taxOf(res.total - L, res.ria.ded);
   const saved = res.tax - after.tax;
   document.getElementById('loss-result').innerHTML = L > 0
-    ? `손실 ${korWon(L)}을 연내 확정하면 세금이 <b>${won(res.tax)} → ${won(after.tax)}</b>, <b>${won(saved)}</b> 줄어듭니다.${saved < L * 0.22 - 1 && res.tax > 0 ? ' 세금이 0원이 된 뒤의 손실은 더 줄일 세금이 없고, 내년으로 넘어가지도 않습니다.' : ''}${res.tax === 0 ? ' 지금 이미 세금이 0원이라 손실을 확정해도 줄어드는 세금이 없습니다.' : ''}`
+    ? `손실 ${korWon(L)}을 연내 확정하면 세금이 <b>${won(res.tax)} → ${won(after.tax)}</b>, <b>${won(saved)}</b> 줄어듭니다.${saved < L * OS.rate - 1 && res.tax > 0 ? ' 세금이 0원이 된 뒤의 손실은 더 줄일 세금이 없고, 내년으로 넘어가지도 않습니다.' : ''}${res.tax === 0 ? ' 지금 이미 세금이 0원이라 손실을 확정해도 줄어드는 세금이 없습니다.' : ''}`
     : '평가손실을 넣으면, 그 종목을 연내에 팔았을 때 줄어드는 세금을 보여드립니다.';
   const steps = LOSS_STEPS.slice();
   if (need > 0 && !steps.includes(need)) steps.push(need);
@@ -1144,20 +1157,20 @@ function renderYearEnd(res) {
 function renderCompare(res) {
   const gains = res.valid.map(x => x.c.gain);
   const posRows = gains.filter(g => g > 0).reduce((s, g) => s + g, 0);
-  const etfTax = Math.floor(posRows * 0.14) + Math.floor(posRows * 0.014);
+  const etfTax = Math.floor(posRows * ETF_NAT) + Math.floor(posRows * ETF_LOC);
   document.getElementById('cmp-direct').textContent = res.valid.length ? won(res.tax) : '-';
   document.getElementById('cmp-etf').textContent = res.valid.length ? '약 ' + won(etfTax) : '-';
-  const warn = document.getElementById('cmp-etf-warn'), over = posRows > 20000000;
+  const warn = document.getElementById('cmp-etf-warn'), over = posRows > FI.threshold;
   warn.classList.toggle('on', over);
   warn.textContent = over
-    ? '이 차익만으로 금융소득 연 2,000만원을 넘습니다 · 종합과세·건보료까지 더하면 실제 부담은 이보다 클 수 있음'
-    : '15.4%만 반영한 값 · 금융소득 연 2,000만원을 넘으면 종합과세·건보료가 붙을 수 있음';
+    ? `이 차익만으로 금융소득 연 ${manTxt(FI.threshold)}을 넘습니다 · 종합과세·건보료까지 더하면 실제 부담은 이보다 클 수 있음`
+    : `${pctTxt(TAX.etfRate)}만 반영한 값 · 금융소득 연 ${manTxt(FI.threshold)}을 넘으면 종합과세·건보료가 붙을 수 있음`;
   const note = document.getElementById('cmp-note');
   if (!res.valid.length) { note.innerHTML = '종목을 넣으면, 같은 매매차익이 국내상장 해외ETF(일반계좌)에서 났을 때의 세금을 나란히 보여드립니다.'; return; }
   const diff = etfTax - res.tax;
-  note.innerHTML = `위 표의 종목별 이익 중 <b>플러스인 것만</b>(${korWon(posRows)}) 15.4%를 곱한 어림값입니다. 국내상장 ETF는 손실 난 ETF와 서로 상계되지 않기 때문입니다(다른 해외주식 손익 칸은 제외). ` +
-    (diff > 0 ? `이 조건에서는 직투 쪽 세금이 <b>${won(diff)}</b> 적습니다. 250만원 공제와 손익통산 덕분입니다. ` : diff < 0 ? `이 조건에서는 국내상장 ETF 쪽이 <b>${won(-diff)}</b> 적습니다. 이익이 클수록 세율 차이(22% vs 15.4%)가 커집니다. ` : '') +
-    `다만 국내상장 ETF 차익은 다른 이자·배당과 합쳐 <b>금융소득 연 2,000만원</b>을 넘으면 종합과세(최고 49.5%)로 넘어가고 건강보험료에도 영향을 줄 수 있어, 금액이 큰 분은 따로 따져 봐야 합니다.`;
+  note.innerHTML = `위 표의 종목별 이익 중 <b>플러스인 것만</b>(${korWon(posRows)}) ${pctTxt(TAX.etfRate)}를 곱한 어림값입니다. 국내상장 ETF는 손실 난 ETF와 서로 상계되지 않기 때문입니다(다른 해외주식 손익 칸은 제외). ` +
+    (diff > 0 ? `이 조건에서는 직투 쪽 세금이 <b>${won(diff)}</b> 적습니다. ${manTxt(TAX.basic)} 공제와 손익통산 덕분입니다. ` : diff < 0 ? `이 조건에서는 국내상장 ETF 쪽이 <b>${won(-diff)}</b> 적습니다. 이익이 클수록 세율 차이(${pctTxt(OS.rate)} vs ${pctTxt(TAX.etfRate)})가 커집니다. ` : '') +
+    `다만 국내상장 ETF 차익은 다른 이자·배당과 합쳐 <b>금융소득 연 ${manTxt(FI.threshold)}</b>을 넘으면 종합과세(최고 ${pctTxt(TOP_RATE)})로 넘어가고 건강보험료에도 영향을 줄 수 있어, 금액이 큰 분은 따로 따져 봐야 합니다.`;
 }
 
 function renderRia(res) {
@@ -1165,13 +1178,13 @@ function renderRia(res) {
   document.getElementById('ria-body').classList.toggle('is-hidden', !on);
   document.getElementById('ria-summary').textContent = on
     ? (res.ria.rows ? `RIA 매도 ${res.ria.rows}종목 · 공제 ${korWon(res.ria.ded)}` : 'RIA 계산 켜짐 · 종목 줄에서 RIA 매도를 체크하세요')
-    : '2026년 한시 · 양도소득금액 50~100% 공제';
+    : `2026년 한시 · 양도소득금액 ${+(Math.min(...RIA_W) * 100).toFixed(6)}~${pctTxt(Math.max(...RIA_W))} 공제`;
   if (!on) return;
   const r = res.ria;
   let s;
   if (!r.rows) s = '종목 줄에서 \'RIA 계좌에서 매도\'를 체크하면 공제액을 계산합니다.';
   else {
-    s = `RIA 매도금액 ${korWon(r.sale)}${r.capScale < 1 ? ` (한도 5,000만원 초과 → ${Math.round(r.capScale * 1000) / 10}%만 반영. 넘는 몫을 RIA 밖 계좌에서 팔았다면 그 금액을 위 순매수 칸에 − 로 넣으세요)` : ''} · 시기 가중 양도소득금액 ${korWon(r.pre)} × 순매수 조정 ${Math.round(r.factor * 1000) / 10}% = ${r.ded < r.dedRaw ? `${korWon(r.dedRaw)} → 한도(통산 양도차익 − 기본공제 250만원)까지만 ` : ''}<b>공제 ${korWon(r.ded)}</b>`;
+    s = `RIA 매도금액 ${korWon(r.sale)}${r.capScale < 1 ? ` (한도 ${manTxt(TAX.riaCap)} 초과 → ${Math.round(r.capScale * 1000) / 10}%만 반영. 넘는 몫을 RIA 밖 계좌에서 팔았다면 그 금액을 위 순매수 칸에 − 로 넣으세요)` : ''} · 시기 가중 양도소득금액 ${korWon(r.pre)} × 순매수 조정 ${Math.round(r.factor * 1000) / 10}% = ${r.ded < r.dedRaw ? `${korWon(r.dedRaw)} → 한도(통산 양도차익 − 기본공제 ${manTxt(TAX.basic)})까지만 ` : ''}<b>공제 ${korWon(r.ded)}</b>`;
     if (r.net > 0) s += ` (RIA 밖 순매수 가중 ${korWon(r.net)} ÷ RIA 매도 가중 ${korWon(r.wSale)})`;
     if (r.wGain <= 0) s += ' — RIA에서 판 종목이 통산 손실이라 공제할 이익이 없습니다.';
   }
@@ -1183,7 +1196,7 @@ function renderInsight(res) {
   const sp = res.valid.reduce((s, x) => s + (x.c.priceP || 0), 0), sf = res.valid.reduce((s, x) => s + (x.c.fxP || 0), 0);
   if (!res.valid.length && !res.other) {
     t.textContent = '해외주식 세금은 "판 해"에, "원화"로, "1년치를 묶어서" 계산합니다';
-    d.innerHTML = '평가이익은 아무리 커도 팔기 전에는 세금이 없습니다. 팔면 그해 1월~12월(결제일 기준) 매도분을 모두 원화로 바꿔 더하고 빼서, <strong>250만원을 넘는 부분에만 22%</strong>가 붙습니다. 그래서 언제, 무엇을, 얼마나 파느냐가 곧 절세 계획입니다.';
+    d.innerHTML = `평가이익은 아무리 커도 팔기 전에는 세금이 없습니다. 팔면 그해 1월~12월(결제일 기준) 매도분을 모두 원화로 바꿔 더하고 빼서, <strong>${manTxt(TAX.basic)}을 넘는 부분에만 ${pctTxt(OS.rate)}</strong>가 붙습니다. 그래서 언제, 무엇을, 얼마나 파느냐가 곧 절세 계획입니다.`;
     return;
   }
   if (S.mode === 'usd' && sf > 0 && sp < 0 && sp + sf > 0) {
@@ -1196,13 +1209,13 @@ function renderInsight(res) {
   } else if (res.tax > 0) {
     const need = lossNeeded(res);
     t.textContent = `연말 전 손실 ${korWon(need)}이면 세금이 0원입니다`;
-    d.innerHTML = `지금 세금은 <strong>${won(res.tax)}</strong>입니다. 들고 있는 종목 중 원화 기준 손실인 것이 있다면 연내(결제일 기준)에 팔아 손실을 확정하는 것만으로 100만원당 22만원씩 줄어듭니다. 다만 손실은 내년으로 넘어가지 않으니 <strong>세금이 0원이 되는 선까지만</strong> 의미가 있습니다.`;
+    d.innerHTML = `지금 세금은 <strong>${won(res.tax)}</strong>입니다. 들고 있는 종목 중 원화 기준 손실인 것이 있다면 연내(결제일 기준)에 팔아 손실을 확정하는 것만으로 100만원당 ${TAX_PER_1M}씩 줄어듭니다. 다만 손실은 내년으로 넘어가지 않으니 <strong>세금이 0원이 되는 선까지만</strong> 의미가 있습니다.`;
   } else if (res.remain <= 0) {
-    t.textContent = `올해 ${res.ria.ded ? '공제 한도를' : '기본공제 250만원을'} 다 썼습니다`;
-    d.innerHTML = `지금 세금은 0원이지만, <strong>세금 없이 더 실현할 수 있는 이익은 남아 있지 않습니다</strong>. 올해 안에 이익을 더 실현하면 100만원마다 22만원씩 세금이 붙습니다. 급하지 않은 매도는 새 250만원 공제가 생기는 내년으로 넘기는 것도 방법입니다.`;
+    t.textContent = `올해 ${res.ria.ded ? '공제 한도를' : `기본공제 ${manTxt(TAX.basic)}을`} 다 썼습니다`;
+    d.innerHTML = `지금 세금은 0원이지만, <strong>세금 없이 더 실현할 수 있는 이익은 남아 있지 않습니다</strong>. 올해 안에 이익을 더 실현하면 100만원마다 ${TAX_PER_1M}씩 세금이 붙습니다. 급하지 않은 매도는 새 ${manTxt(TAX.basic)} 공제가 생기는 내년으로 넘기는 것도 방법입니다.`;
   } else {
     t.textContent = `올해는 ${korWon(res.remain)}까지 '세금 없는 이익 실현' 구간입니다`;
-    d.innerHTML = `기본공제 250만원은 쓰지 않으면 연말에 사라집니다. 오래 들고 있는 수익 종목이 있다면 공제 한도만큼 팔았다가 다시 사서 <strong>취득가액을 높여 두는 방법</strong>도 있습니다. 나중에 같은 종목을 팔 때 과세될 이익이 그만큼 줄어듭니다(매매 수수료와 환전 비용은 따져 보세요).`;
+    d.innerHTML = `기본공제 ${manTxt(TAX.basic)}은 쓰지 않으면 연말에 사라집니다. 오래 들고 있는 수익 종목이 있다면 공제 한도만큼 팔았다가 다시 사서 <strong>취득가액을 높여 두는 방법</strong>도 있습니다. 나중에 같은 종목을 팔 때 과세될 이익이 그만큼 줄어듭니다(매매 수수료와 환전 비용은 따져 보세요).`;
   }
 }
 
@@ -1228,8 +1241,8 @@ function summaryRows(res) {
   const rows = [['항목', '금액(원)'],
     ['통산 양도차익', Math.round(res.total)], ['기본공제 사용', res.basicUsed]];
   if (res.ria.on) rows.push(['RIA 공제', res.ria.ded]);
-  rows.push(['과세표준', res.base], ['양도소득세(20%)', res.nat], ['지방소득세(2%)', res.loc], ['예상 세액 합계', res.tax], ['세금 없이 더 실현 가능한 이익', res.remain]);
-  rows.push(['기준', `${TAX.year}년 귀속 · 기본공제 250만원 · 세율 22% (2026-10-12 확인)`]);
+  rows.push(['과세표준', res.base], [`양도소득세(${pctTxt(TAX.natRate)})`, res.nat], [`지방소득세(${pctTxt(TAX.locRate)})`, res.loc], ['예상 세액 합계', res.tax], ['세금 없이 더 실현 가능한 이익', res.remain]);
+  rows.push(['기준', `${TAX.year}년 귀속 · 기본공제 ${manTxt(TAX.basic)} · 세율 ${pctTxt(OS.rate)} (2026-10-12 확인)`]);
   return rows;
 }
 document.addEventListener('click', e => {
