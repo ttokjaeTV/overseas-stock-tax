@@ -642,6 +642,7 @@
     <div class="btn-row" style="margin-top:14px;">
       <a class="btn" href="https://ttokjaetv.github.io/etf-vs-direct/" target="_blank" rel="noopener">해외ETF vs 직투 비교 계산기 →</a>
       <a class="btn ghost" href="https://ttokjaetv.github.io/trading-fee/" target="_blank" rel="noopener">증권사 수수료 비교표 →</a>
+      <a class="btn ghost" id="sg-link" href="https://ttokjaetv.github.io/spouse-gift/" target="_blank" rel="noopener">배우자에게 증여하고 팔면? →</a>
     </div>
   </div>
 
@@ -1193,6 +1194,10 @@ function renderRia(res) {
 }
 
 function renderInsight(res) {
+  // 배우자 증여 절세 계산기로: 이익 난 종목의 원화 매수·매도 금액(만원)을 넘김
+  const up = res.valid.filter(x => x.c.gain > 0), toMan = v => Math.round(v / 1e4);
+  const sgCost = up.reduce((s, x) => s + x.c.buyK, 0), sgSale = up.reduce((s, x) => s + x.c.sellK, 0);
+  document.getElementById('sg-link').href = 'https://ttokjaetv.github.io/spouse-gift/' + (up.length ? `?cost=${toMan(sgCost)}&value=${toMan(sgSale)}&sale=${toMan(sgSale)}` : '');
   const t = document.getElementById('insight-title'), d = document.getElementById('insight-desc');
   const sp = res.valid.reduce((s, x) => s + (x.c.priceP || 0), 0), sf = res.valid.reduce((s, x) => s + (x.c.fxP || 0), 0);
   if (!res.valid.length && !res.other) {
