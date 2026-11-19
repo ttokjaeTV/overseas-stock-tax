@@ -224,9 +224,8 @@
   .chart-container { position: relative; height: 300px; width: 100%; }
 
   /* 표 */
-  .scroll-hint { display: none; margin: 12px 0 -8px; text-align: center; font-size: 12px; font-weight: 700; color: var(--ink-mute); }
+  .scroll-hint { display: none; margin: 12px 0 8px; text-align: center; font-size: 12px; font-weight: 700; color: var(--ink-mute); }
   @media (max-width: 924px) { .scroll-hint.sh-924 { display: block; } }
-  @media (max-width: 1162px) { .scroll-hint.sh-1162 { display: block; } }
   .scroll-hint:has(+ .tjl-box) { display: none !important; }
   .table-wrap { overflow-x: auto; margin-top: 16px; border-radius: 12px; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
@@ -595,7 +594,6 @@
         <div class="fixed-note" id="loss-result">-</div>
       </div>
       <div>
-        <p class="scroll-hint sh-1162" aria-hidden="true">← 옆으로 밀어 보세요 →</p>
         <div class="table-wrap" style="margin-top:0;">
           <table class="data-table sim-table">
             <thead><tr><th>연내 확정하는 손실</th><th>통산 양도차익</th><th>예상 세액</th><th>줄어드는 세금</th></tr></thead>
