@@ -225,7 +225,8 @@
 
   /* 표 */
   .scroll-hint { display: none; margin: 12px 0 8px; text-align: center; font-size: 12px; font-weight: 700; color: var(--ink-mute); }
-  @media (max-width: 924px) { .scroll-hint.sh-924 { display: block; } }
+  @media (max-width: 756px), (min-width: 769px) and (max-width: 924px) { .scroll-hint.sh-924 { display: block; } }
+  @media print { .scroll-hint { display: none !important; } }
   .scroll-hint:has(+ .tjl-box) { display: none !important; }
   .table-wrap { overflow-x: auto; margin-top: 16px; border-radius: 12px; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
